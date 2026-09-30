@@ -128,7 +128,14 @@ jobs:
               fail=1
             fi
           done
-          [ "$fail" = "0" ] || { echo '::error::存在失败的接口回归脚本'; exit 1; }
+          if [ "$fail" != "0" ]; then
+            echo '--- 诊断：最近的提交记录与关系行 ---'
+            mysql -h127.0.0.1 -P3306 -uroot -p"$MYSQL_ROOT_PASSWORD" -D ruoyi-vue-pro -e \
+              "SELECT id,repo,revision,LEFT(comment,60) AS comment FROM zt_repohistory ORDER BY id DESC LIMIT 5;
+               SELECT * FROM zt_relation ORDER BY id DESC LIMIT 10;" 2>&1 | head -40 || true
+            echo '::error::存在失败的接口回归脚本'
+            exit 1
+          fi
       - name: 失败时上传后端日志
         if: failure()
         uses: actions/upload-artifact@v4
