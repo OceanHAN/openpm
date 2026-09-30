@@ -148,7 +148,9 @@ line=$(curl -s "${HF[@]}" "$BASE/zentao/repo/commit-get?repo=$RID&revision=deadb
 
 echo "--- 5. 提交与对象的双向关联（Story/Task/Bug #id）---"
 # 同一个对象会被多条提交关联（task 1 在第 1、2 次提交里都写了），所以按去重后的对象集合断言
-DB_LINKS=$(mysql_query "SELECT DISTINCT CONCAT(BType,':',BID) FROM \`ruoyi-vue-pro\`.zt_relation r JOIN \`ruoyi-vue-pro\`.zt_repohistory h ON h.id=r.AID WHERE h.repo=$RID ORDER BY BType,BID;")
+# 注意：DISTINCT + ORDER BY 必须排序**别名**（AS k ... ORDER BY k）。MySQL 8 默认 sql_mode 含
+# ONLY_FULL_GROUP_BY 时，ORDER BY 引用非选中列会直接报 ERROR 3065 —— CI 上就是这么红的（本地库 sql_mode 宽松，掩盖了这个问题）。
+DB_LINKS=$(mysql_query "SELECT DISTINCT CONCAT(BType,':',BID) AS k FROM \`ruoyi-vue-pro\`.zt_relation r JOIN \`ruoyi-vue-pro\`.zt_repohistory h ON h.id=r.AID WHERE h.repo=$RID ORDER BY k;")
 line=$(echo "$DB_LINKS" | tr '\n' ' ')
 [ "${line}" = "bug:1 story:1 task:1 task:2 " ] && { PASS=$((PASS+1)); echo "  ✅ 三条提交说明解析出 4 个关联对象：Story#1 / Task#1 / Task#2 / Bug#1"; } \
   || { FAIL=$((FAIL+1)); echo "  ❌ 关系行 实际=${line}"; }

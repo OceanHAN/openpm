@@ -51,26 +51,45 @@ _mysql_pick() {
 _normalize_sql() { printf '%s' "$1" | sed 's/\\`/`/g'; }
 
 # 底层：$1=SQL，$2=额外的 mysql 参数（如 -N）
+# SQL 出错时把 mysql 的报错打到 stderr（stdout 保持纯结果，调用方的 $(...) 不受污染）。
+# 为什么要这么做：以前 stderr 直接丢进 /dev/null，一条 ONLY_FULL_GROUP_BY 报错被吞成「查不到数据」，
+# 结果在 CI 上表现为「断言莫名失败」，排查花了很久。
+_mysql_report_err() {
+  local _rc="$1" _errfile="$2"
+  if [ "$_rc" != "0" ] && [ -s "$_errfile" ]; then
+    grep -v 'Using a password' "$_errfile" | sed 's/^/[mysql] /' >&2
+  fi
+  rm -f "$_errfile"
+}
+
 _mysql_raw() {
   local _sql _extra _b64
   _sql="$(_normalize_sql "$1")"
   _extra="$2"
   case "$(_mysql_pick)" in
     local)
+      _err=$(mktemp)
       timeout 60 docker exec -i yudao-local-mysql mysql -uroot -p"$MYSQL_PASS" \
-        --default-character-set=utf8mb4 $_extra -e "$_sql" 2>/dev/null | grep -v WARNING ;;
+        --default-character-set=utf8mb4 $_extra -e "$_sql" 2>"$_err" | grep -v WARNING
+      _rc=${PIPESTATUS[0]}
+      _mysql_report_err "$_rc" "$_err" ;;
     direct)
       # 直连服务器 3307（应用账号 yudao）：比走 ssh 快，而且没有「远端 shell 展开反引号」的坑。
-      # 顺带也没有了「远端 shell 展开反引号」的坑（坑位：base64 那一段）。
+      _err=$(mktemp)
       timeout 60 mysql -h"$REMOTE_HOST" -P"$MYSQL_DIRECT_PORT" \
         -u"$MYSQL_DIRECT_USER" -p"$MYSQL_DIRECT_PASS" \
-        --default-character-set=utf8mb4 $_extra -e "$_sql" 2>/dev/null | grep -v WARNING ;;
+        --default-character-set=utf8mb4 $_extra -e "$_sql" 2>"$_err" | grep -v WARNING
+      _rc=${PIPESTATUS[0]}
+      _mysql_report_err "$_rc" "$_err" ;;
     *)
       _b64=$(printf '%s' "$_sql" | base64 | tr -d '\n')
+      _err=$(mktemp)
       timeout 90 ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
         "${REMOTE_USER}@${REMOTE_HOST}" \
         "echo $_b64 | base64 -d | docker exec -i yudao-mysql mysql -uroot -p'$MYSQL_PASS' --default-character-set=utf8mb4 $_extra" \
-        2>/dev/null | grep -v WARNING ;;
+        2>"$_err" | grep -v WARNING
+      _rc=${PIPESTATUS[0]}
+      _mysql_report_err "$_rc" "$_err" ;;
   esac
 }
 
