@@ -759,7 +759,7 @@ checkTokenAccess/apiCreatePipeline/apiErrorHandling/apiGetExecInfo/getLogs），
 这一组要特别说清「**不迁不是偷懒**」：这 7 个模块的代码是真的、表也大多在开源版，
 取证过程中**没有发现「其实是存根」或「架构上不可能」的借口**。它们被判 not-worth 是因为
 **价值不成立**——搬过去的目标产物在 Java 侧没有意义，或只剩一个点不动的空壳：
-`upgrade` 是把禅道自己的历史 schema 漂移补丁链（10 年债）复刻成 Java 死代码；
+`upgrade` 是把禅道自己的历史 schema 漂移补丁链（10 年债）照搬成 Java 死代码；
 `tutorial` 是教学假数据层，生效前提是返工 220 处已迁模块；
 `aiapp`/`gitfox`/`zahost`/`zanode` 剥掉外部服务后只剩 UI 外壳；
 `provider` 的下游 `pipeline` 整个未迁。**投入产出比不合理，所以不做**——
@@ -797,7 +797,7 @@ json、`:783` 真 DB 取值、`:859/872/885` 的 `ok` 紧跟真实写入逻辑�
 本模块的全部输入是「禅道旧版 schema 的历史漂移」，全部输出是「禅道新版 schema」；
 yudao 的 schema 由自身 Flyway/迁移体系管理，**不存在「Java 版禅道从 1.0 增量升到 21.x」这一场景**——
 本项目对禅道数据的处理是**一次性导入**，而不是把 `update0.1.sql…update21.x.sql` 这条 10 年历史
-补丁链照抄进 Java。照搬 = 把上游历史债复刻成 Java 死代码。不选 do-it（价值不成立）、
+补丁链照抄进 Java。照搬 = 把上游历史债照搬成 Java 死代码。不选 do-it（价值不成立）、
 不选 map-only（它带 18 个 UI 页 2,082 行与 35 个 action，有界面与接口外形，不是后台设置/调度器一类）、
 不选 not-possible（实现真实完整）。判 not-worth，并**推翻旧清单第 2 行/第 102/137/158 行**
 「可继续迁移 P2」的结论——旧判断只看了表齐全与门槛次数，未评估「Java 侧没有可升级的禅道旧库」这一前提。
@@ -842,7 +842,7 @@ productplan/release/design/tree/user/kanban/stakeholder/qa…），其中绝大�
 **如果要做，scope 是**：**不迁移**（0 张新表 / 0 接口 / 0 前端页）。只在清单留一条说明：
 ① 是「新手教程/向导」教学层，复用通用表 `zt_action`/`zt_config`，无专属表结构，故无 DDL 工作；
 ② 2,640 行 model 为纯假数据存根（43 处 `new stdclass`，仅 2 处真实 SQL），业务价值为 0；
-③ 生效前提是 220 处跨模块 `tutorialMode` 钩子（覆盖已迁模块），复刻会强制返工所有已迁模块；
+③ 生效前提是 220 处跨模块 `tutorialMode` 钩子（覆盖已迁模块），照搬会强制返工所有已迁模块；
 ④ 唯一门槛仅屏蔽 feedbackManage 一条向导，非功能主体；⑤ 无外部系统依赖。
 建议把清单里 tutorial 从「可继续迁移」移出，归入「不建议迁移（教学/演示层）」。
 可选替代：如业务方确需新手引导，由前端在 yudao 侧实现 onboarding overlay（不需要后端接口）。
@@ -940,7 +940,7 @@ webhook 方法在 control/model 里都不存在——OSS 包里 gitfox 的「业
 判 not-worth。scope：不迁移、不建表、不写码，仅登记映射说明——gitfox = 禅道私有 GitFox 服务端的
 HTTP 客户端（29 处 `common::http` 指向 `config->devops->gitfoxURL:3000`，安装包来自 pkg.zentao.net，
 与 GitLab/Gitea/SVN 同类「服务商接入」）；yudao 侧用自身第三方集成能力替代，
-若要保留 DevOps 代码托管链路，应走 yudao 已有的代码库/Git 集成方案，而不是复刻 GitFox 客户端。
+若要保留 DevOps 代码托管链路，应走 yudao 已有的代码库/Git 集成方案，而不是照搬 GitFox 客户端。
 
 ### `provider`（843 行 / 6 action / 预计 0 轮，JSON 记 1 轮为「假设开工时」）
 

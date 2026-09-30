@@ -3,6 +3,8 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与[语义化版本](https://semver.org/lang/zh-CN/)。
 尚未发布正式版本，下面是按时间倒序的里程碑。
 
+> 定位：以禅道的研发管理思路为参考，按自己的判断做取舍与改进（**不是禅道复刻**）。
+
 ## [未发布]
 
 ### 新增

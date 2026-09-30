@@ -2,7 +2,7 @@
 
 # openpm
 
-**An open-source R&D collaboration platform that re-implements ZenTao's business rules on Java + Vue 3**
+**An open-source R&D collaboration platform inspired by ZenTao, redesigned on Java + Vue 3**
 
 Product · Project · Execution · Story · Task · Bug · Test · Doc · Effort · Kanban · Metric · BI · Report
 
@@ -21,26 +21,46 @@ Product · Project · Execution · Story · Task · Bug · Test · Doc · Effort
 
 ## What is this
 
-**openpm** is a Java rewrite of a software R&D management platform whose business rules follow
-[ZenTao](https://github.com/easysoft/zentaopms). It is built on top of
-[yudao / ruoyi-vue-pro](https://github.com/YunaiV/ruoyi-vue-pro) and keeps ZenTao's `zt_*` table
-naming and column semantics.
+**openpm** is an R&D project management and collaboration platform: it **takes
+[ZenTao](https://github.com/easysoft/zentaopms) as a reference for R&D management workflows and
+then makes its own design decisions and improvements**, implemented in Java + Vue 3. It is built on
+[yudao / ruoyi-vue-pro](https://github.com/YunaiV/ruoyi-vue-pro), and keeps ZenTao's `zt_*` table
+naming so that existing ZenTao users recognise the data and can migrate theirs.
 
-In one sentence: **the same R&D management process, on a Java + MySQL + Vue 3 stack, with rules
-kept as close to 1:1 as possible.** Every rule can be traced back to a location in ZenTao's source;
-intentional deviations are documented one by one in the
-[implementation notes](docs/IMPLEMENTATION-NOTES.md) (Chinese).
+In one sentence: **ZenTao provided a proven skeleton for R&D management; the product shape, data
+model details, metric definitions, permission views and deployment model are our own design.**
+
+- Where we borrowed from ZenTao, the [implementation notes](docs/IMPLEMENTATION-NOTES.md) (Chinese)
+  say where it came from.
+- Where we added, dropped or changed something, the notes say **why** — that is where this
+  project's value actually lives.
 
 ### What it is not
 
+- **Not a ZenTao clone**: we do not aim for 1:1 parity. Story layering, metrics/BI, permission
+  views, kanban, notifications and deployment are deliberately different, and parts of ZenTao we
+  consider a poor fit (legacy debt, external-service dependencies) are explicitly not ported.
 - **Not affiliated with ZenTao** (Qingdao EasySoft). This repository contains **no ZenTao source
   code** — it is not a fork and does not copy files from it.
-- **Not a line-by-line PHP→Java translation**: business rules are mirrored, implementation is
-  rewritten with idiomatic Java (MyBatis-Plus, Spring transactions, Jackson 3 …).
+- **Not a line-by-line PHP→Java translation**: it borrows ideas, not code; the implementation is
+  idiomatic Java (MyBatis-Plus, Spring transactions, Jackson 3 …).
 - **Not a hosted SaaS**: it is meant to be self-hosted; you provide MySQL 8, Redis 7 and a build
   environment.
 
 > "ZenTao" is a trademark of its owner. The name is only used here to describe compatibility.
+
+### A few of our own decisions
+
+| Our approach | Why |
+|---|---|
+| **18 modules are deliberately not ported**; framework capabilities are used instead (approval → workflow engine, mail/notify → system notifications, SSO → OAuth2) | They are not the core of R&D management; rebuilding them adds no value |
+| Metrics are not a full formula engine; we use **definitions + snapshots + reusable metrics** with 15 metrics to start | A full engine costs a lot and is rarely used; make the numbers trustworthy first |
+| BI keeps only a **guarded SQL data view** — no DuckDB, no pivot tables | Covers the majority of real needs at a fraction of the maintenance cost |
+| Repositories support **local git only**, no provider APIs | It solves our own problem first |
+| Permissions reuse framework RBAC plus a **ZenTao-style organisation/permission view** | ZenTao users have a different mental model — don't force them to change |
+| Delivery: Docker Compose + systemd + a one-command acceptance suite (**43 API suites / 1704 assertions**) | ZenTao has nothing like it, and it is what lets us change things safely |
+
+> The full list of trade-offs lives in the [module feasibility audit](docs/MODULE-FEASIBILITY-AUDIT.md).
 
 ## Screenshots
 
