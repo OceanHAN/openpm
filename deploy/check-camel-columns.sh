@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------------------
 # 驼峰列名预检：找出「字段名是驼峰、但漏了 @TableField」的 DO 字段。
 #
-# 为什么需要它（README 第 1 条坑，每新增一张禅道表都会遇到）：
+# 为什么需要它（IMPLEMENTATION-NOTES.md 第 1 条坑，每新增一张禅道表都会遇到）：
 #   禅道的列名是驼峰（objectID / addedBy / rawContent / baseUrl …），
 #   而 MyBatis-Plus 默认把 Java 字段名按「驼峰转下划线」拼列名，
 #   于是 baseUrl 会被拼成 base_url —— 报错是
@@ -31,7 +31,7 @@ mysql_query "SELECT table_name, column_name FROM information_schema.columns
               ORDER BY table_name, ordinal_position;" > /tmp/zt_columns.tsv
 
 # ★ 取不到列信息必须报错退出：早期版本写死远端 ssh，远端不可达时这里是个空文件，
-#   脚本照样打印「OK：0 张表」，把「连不上库」伪装成「检查通过」（参考 README 第四节坑位 #42 的教训）
+#   脚本照样打印「OK：0 张表」，把「连不上库」伪装成「检查通过」（参考 IMPLEMENTATION-NOTES.md 第四节坑位 #42 的教训）
 if [ ! -s /tmp/zt_columns.tsv ]; then
   echo "✗ 取不到任何 zt_* 表的列信息：远端不可达、本机栈也没起来（或库名写错了：${DB}）" >&2
   exit 1

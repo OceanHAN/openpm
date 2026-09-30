@@ -12,7 +12,7 @@
 #   ④ 移动项目集要重算整棵子树的 path/grade（禅道 processNode）
 #   ⑤ 产品靠 zt_product.program 归属项目集
 #
-# 两个手测注意点（都踩过，见 README 第四节 35/36）：
+# 两个手测注意点（都踩过，见 IMPLEMENTATION-NOTES.md 第四节 35/36）：
 #   * 中文查询参数必须 --data-urlencode：Tomcat 直接拒收未编码的非 ASCII 请求行（400 HTML）
 #   * 删项目集有保护：先清产品/项目/子项目集，再删项目集
 BASE=${ZENTAO_API_BASE:-http://127.0.0.1:48080/admin-api}

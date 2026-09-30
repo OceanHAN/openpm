@@ -15,7 +15,7 @@
 #   4. IP 白名单的六种形态：* / 精确 / 逗号列表 / a-b 区间 / 192.168.1.* / CIDR（第 4 节逐条验）
 #   5. 调用日志落在通用表 zt_log（objectType='entry'），**只有校验通过才写**（第 6 节验）
 #
-# 有意偏离（README 3.43）：校验通过不建立登录会话（yudao 的认证归 OAuth2），只做校验 + 记账 + 返回账号。
+# 有意偏离（IMPLEMENTATION-NOTES.md 3.43）：校验通过不建立登录会话（yudao 的认证归 OAuth2），只做校验 + 记账 + 返回账号。
 BASE=${ZENTAO_API_BASE:-http://127.0.0.1:48080/admin-api}
 PASS=0; FAIL=0
 

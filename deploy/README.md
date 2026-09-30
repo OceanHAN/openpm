@@ -34,7 +34,7 @@
 
 仓库里的 `deploy/sql/01~56*.sql` 可以**从空库完整建出环境**（01~03 是 yudao 基础库，
 04~35 是禅道的表/菜单/部分演示数据，**36 是演示数据补种** —— 项目/需求/任务/缺陷那几条
-当年只存在于远端库里，从空库初始化时会缺，详见 36 的注释与根 README 坑位 #42；
+当年只存在于远端库里，从空库初始化时会缺，详见 36 的注释与docs/IMPLEMENTATION-NOTES.md 坑位 #42；
 **39 是用例库**：它不给 `zt_case` 建新表，而是补 `lib`/`fromCaseID`/`fromCaseVersion` 三列 +
 用例库菜单 + 演示库，ALTER 用 `information_schema` 判过、可重复执行；**40 是看板**：
 八张表（空间/看板/区域/分组/泳道/列/卡片/格子）+ 菜单 + 一条演示板；**41 是度量**：
@@ -221,7 +221,7 @@ node deploy/ui-check/webhook.mjs        # Webhook：列表/新建弹窗/mock 端
 
 > 登录逻辑抽到了 `ui-check/_login.mjs`：等按钮可用 → 点击 → 最多重试 3 轮、URL 等待 90s。
 > 远端 MySQL/Redis 的网络抖动会让登录和后端聚合接口慢到 20s+，
-> 固定 sleep + 短超时会把「慢」误报成「坏」（详见根目录 README 5.3.1）。
+> 固定 sleep + 短超时会把「慢」误报成「坏」（详见docs/IMPLEMENTATION-NOTES.md 5.3.1）。
 >
 > 所有脚本都在异常退出时 `b.close()`。**不要去掉它** —— 每失败一次留一个 headless Chromium，
 > 攒到几十个之后机器负载升高，后面的检查会连锁失败（实测攒到 31 个）。
@@ -233,7 +233,7 @@ node deploy/ui-check/webhook.mjs        # Webhook：列表/新建弹窗/mock 端
 | 前提 | 为什么 | 怎么办 |
 |---|---|---|
 | 后端所在机器要有 **git ≥ 1.8.5** | 代码库（repo）模块会跑 `git -C <path> log`；CentOS 7 自带的 git 1.8.3 **不支持 `-C`** | 服务器上已装 git 2.43.0（`/opt/git` → `/usr/local/bin/git`；编译脚本 `/opt/src/build-git.sh`） |
-| 前端是 vite dev server（8081），不是静态包 | 本 checkout 的 `vite build` 跑不通（yudao 自带的 oa/attendance 引用了一个不存在的模块） | 见根 README 5.0；改前端 = 同步 `src/` 到 `/data/yudao/frontend` 后 `systemctl restart yudao-ui` |
+| 前端是 vite dev server（8081），不是静态包 | 本 checkout 的 `vite build` 跑不通（yudao 自带的 oa/attendance 引用了一个不存在的模块） | 见docs/IMPLEMENTATION-NOTES.md 5.0；改前端 = 同步 `src/` 到 `/data/yudao/frontend` 后 `systemctl restart yudao-ui` |
 | 本机到 192.168.0.0/24 走代理，偶发断连 | 一次断连会把整个脚本的断言全打成红 | 全量脚本对每个 test/ui-check 都「失败重跑一次」；查库断言走 `MYSQL_TARGET=direct` 直连 3307（0.7s/次） |
 
 ### 新增一张禅道表之后必跑的三个预检
@@ -261,7 +261,7 @@ bash deploy/check-tenant-ignore.sh      # 新表没登记进 yudao.tenant.ignore
   日志里只有一句 `Unknown column 'tenant_id' in 'where clause'`（`zt_score` 这一轮就漏了）。
 
 三个脚本覆盖的是「MySQL 保留字」「驼峰列名」和「租户忽略表」；**JSqlParser 那一份保留字清单只能在
-应用层暴露，所以新增表之后还要真的调一次列表接口**（详见根目录 README 第四节第 10、11、20、27 条）。
+应用层暴露，所以新增表之后还要真的调一次列表接口**（详见docs/IMPLEMENTATION-NOTES.md 第四节第 10、11、20、27 条）。
 
 ### 模块级审计：还剩哪些「能做」、哪些「不用做」
 
