@@ -1,0 +1,235 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MYSQL_ROOT_PASSWORD: ci-root-pass
+
+jobs:
+  backend-build:
+    name: 后端编译（JDK 25）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: mvn package（跳过单测，验证走接口回归脚本）
+        working-directory: ruoyi-vue-pro
+        run: mvn -B -Dmaven.legacyLocalRepo=true -pl yudao-server -am package -DskipTests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yudao-server-jar
+          path: ruoyi-vue-pro/yudao-server/target/yudao-server.jar
+          retention-days: 3
+
+  api-regression:
+    name: 接口回归（43 脚本 / 1704 断言）
+    runs-on: ubuntu-latest
+    needs: backend-build
+    timeout-minutes: 90
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-pass
+          MYSQL_DATABASE: ruoyi-vue-pro
+          TZ: Asia/Shanghai
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h127.0.0.1 -uroot -pci-root-pass --silent"
+          --health-interval 10s --health-timeout 5s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/download-artifact@v4
+        with:
+          name: yudao-server-jar
+          path: /tmp/jar
+      - name: 建库（01~56 幂等脚本）
+        run: |
+          mysql -h127.0.0.1 -P3306 -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SET GLOBAL time_zone='+08:00';"
+          for f in deploy/sql/*.sql; do
+            printf '  → %s ' "$f"
+            if mysql -h127.0.0.1 -P3306 -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 ruoyi-vue-pro < "$f" >/dev/null 2>&1; then
+              echo ok
+            else
+              echo 'FAIL（继续，最后统一校验表数）'
+            fi
+          done
+          n=$(mysql -h127.0.0.1 -P3306 -uroot -p"$MYSQL_ROOT_PASSWORD" -N -e \
+              "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='ruoyi-vue-pro' AND table_name LIKE 'zt\\_%';")
+          echo "zt_ 表数 = $n（期望 67）"
+          [ "$n" = "67" ] || { echo '::error::zt_ 表数不符合预期'; exit 1; }
+      - name: 准备 secrets（CI 用一次性口令）
+        run: |
+          printf "export MYSQL_PASS='ci-root-pass'\nexport REDIS_PASS=''\nexport SSH_PASS=''\n" > deploy/_secrets.sh
+      - name: 启动后端并等待就绪
+        run: |
+          nohup java -Duser.timezone=Asia/Shanghai -jar /tmp/jar/yudao-server.jar \
+            --spring.profiles.active=local \
+            --spring.datasource.dynamic.datasource.master.url="jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true" \
+            --spring.datasource.dynamic.datasource.slave.url="jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true" \
+            --spring.datasource.dynamic.datasource.master.username=root \
+            --spring.datasource.dynamic.datasource.master.password="$MYSQL_ROOT_PASSWORD" \
+            --spring.datasource.dynamic.datasource.slave.username=root \
+            --spring.datasource.dynamic.datasource.slave.password="$MYSQL_ROOT_PASSWORD" \
+            --spring.data.redis.host=127.0.0.1 --spring.data.redis.port=6379 \
+            > /tmp/backend.log 2>&1 &
+          code=000
+          for i in $(seq 1 72); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 -X POST \
+              http://127.0.0.1:48080/admin-api/system/auth/login \
+              -H 'Content-Type: application/json' -H 'tenant-id: 1' \
+              -d '{"username":"admin","password":"admin123"}' || true)
+            [ "$code" = "200" ] && { echo "后端就绪（第 $((i*5)) 秒）"; break; }
+            sleep 5
+          done
+          [ "$code" = "200" ] || { echo '::error::后端未就绪'; tail -60 /tmp/backend.log; exit 1; }
+      - name: 跑全部接口回归脚本
+        env:
+          ZENTAO_API_BASE: http://127.0.0.1:48080/admin-api
+          MYSQL_TARGET: direct
+          REMOTE_HOST: 127.0.0.1
+          MYSQL_DIRECT_PORT: '3306'
+          MYSQL_DIRECT_USER: root
+          MYSQL_DIRECT_PASS: ci-root-pass
+        run: |
+          fail=0
+          for f in deploy/test-*.sh; do
+            out=$(bash "$f" 2>&1) || true
+            ok=$(printf '%s' "$out" | grep -c '✅' || true)
+            bad=$(printf '%s' "$out" | grep -c '❌' || true)
+            printf '  %-44s ✅ %s / ❌ %s\n' "$(basename "$f")" "$ok" "$bad"
+            if [ "$bad" != "0" ]; then
+              printf '%s\n' "$out" | grep '❌' | head -5
+              fail=1
+            fi
+          done
+          [ "$fail" = "0" ] || { echo '::error::存在失败的接口回归脚本'; exit 1; }
+      - name: 失败时上传后端日志
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-log
+          path: /tmp/backend.log
+
+  ui-smoke:
+    name: 界面巡检（21 页面 / Playwright）
+    runs-on: ubuntu-latest
+    needs: backend-build
+    timeout-minutes: 60
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-pass
+          MYSQL_DATABASE: ruoyi-vue-pro
+          TZ: Asia/Shanghai
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h127.0.0.1 -uroot -pci-root-pass --silent"
+          --health-interval 10s --health-timeout 5s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: yudao-server-jar
+          path: /tmp/jar
+      - name: 建库
+        run: |
+          mysql -h127.0.0.1 -P3306 -uroot -p"$MYSQL_ROOT_PASSWORD" -e "SET GLOBAL time_zone='+08:00';"
+          for f in deploy/sql/*.sql; do
+            mysql -h127.0.0.1 -P3306 -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 ruoyi-vue-pro < "$f" >/dev/null 2>&1 || true
+          done
+          printf "export MYSQL_PASS='ci-root-pass'\nexport REDIS_PASS=''\nexport SSH_PASS=''\n" > deploy/_secrets.sh
+      - name: 启动后端
+        run: |
+          nohup java -Duser.timezone=Asia/Shanghai -jar /tmp/jar/yudao-server.jar \
+            --spring.profiles.active=local \
+            --spring.datasource.dynamic.datasource.master.url="jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true" \
+            --spring.datasource.dynamic.datasource.slave.url="jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true" \
+            --spring.datasource.dynamic.datasource.master.username=root --spring.datasource.dynamic.datasource.master.password="$MYSQL_ROOT_PASSWORD" \
+            --spring.datasource.dynamic.datasource.slave.username=root --spring.datasource.dynamic.datasource.slave.password="$MYSQL_ROOT_PASSWORD" \
+            --spring.data.redis.host=127.0.0.1 --spring.data.redis.port=6379 \
+            > /tmp/backend.log 2>&1 &
+          code=000
+          for i in $(seq 1 72); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 -X POST \
+              http://127.0.0.1:48080/admin-api/system/auth/login \
+              -H 'Content-Type: application/json' -H 'tenant-id: 1' \
+              -d '{"username":"admin","password":"admin123"}' || true)
+            [ "$code" = "200" ] && { echo "后端就绪（第 $((i*5)) 秒）"; break; }
+            sleep 5
+          done
+          [ "$code" = "200" ] || { echo '::error::后端未就绪'; tail -60 /tmp/backend.log; exit 1; }
+      - name: 安装前端依赖
+        working-directory: yudao-ui-admin-vue3
+        run: |
+          corepack enable
+          pnpm install --no-frozen-lockfile
+      - name: 启动前端（vite dev server）
+        run: |
+          cd yudao-ui-admin-vue3
+          printf "NODE_ENV=development\nVITE_DEV=true\nVITE_BASE_URL='http://127.0.0.1:48080'\nVITE_API_URL=/admin-api\nVITE_APP_CAPTCHA_ENABLE=false\nVITE_APP_API_ENCRYPT_ENABLE=false\n" > .env.local
+          nohup npx vite --mode env.local --host 127.0.0.1 --port 8081 --strictPort > /tmp/vite.log 2>&1 &
+          for i in $(seq 1 60); do
+            c=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:8081/ || true)
+            [ "$c" = "200" ] && { echo "前端就绪（第 $((i*5)) 秒）"; break; }
+            sleep 5
+          done
+          [ "$c" = "200" ] || { echo '::error::前端未就绪'; tail -40 /tmp/vite.log; exit 1; }
+      - name: 安装 Playwright 与浏览器
+        run: |
+          npm install -g playwright
+          npx --yes playwright install --with-deps chromium
+      - name: 21 页面巡检
+        env:
+          ZENTAO_UI_BASE: http://127.0.0.1:8081
+          ZENTAO_API_BASE: http://127.0.0.1:48080/admin-api
+        run: node deploy/ui-check/all-pages.mjs
+      - name: 失败时上传日志
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-logs
+          path: |
+            /tmp/backend.log
+            /tmp/vite.log

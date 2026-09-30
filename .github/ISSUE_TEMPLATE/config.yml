@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 迁移清单与模块现状
+    url: https://github.com/OceanHAN/openpm/blob/main/docs/MIGRATION-INVENTORY.md
+    about: 提交前先看看这个模块是否已经实现、或已被判定为「不迁移」
+  - name: 模块可行性审计
+    url: https://github.com/OceanHAN/openpm/blob/main/docs/MODULE-FEASIBILITY-AUDIT.md
+    about: 哪些模块能迁、哪些不必迁、哪些在开源版里没有实现可搬

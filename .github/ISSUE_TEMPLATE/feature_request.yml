@@ -1,0 +1,27 @@
+name: 功能建议
+description: 提一个新功能或迁移一个尚未覆盖的禅道模块
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: 你想解决什么问题
+      description: 先讲场景与痛点，再讲你希望的形态
+    validations:
+      required: true
+  - type: input
+    id: zentao
+    attributes:
+      label: 对应的禅道行为（如有）
+      description: 禅道模块名 / 文件路径 / 界面截图，便于判断是「迁移」还是「新功能」
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你设想的实现
+      description: 表结构、接口、页面或替代方案都可以写
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 自查
+      options:
+        - label: 已看过 docs/MIGRATION-INVENTORY.md，确认该模块尚未实现或属于「不迁移」

@@ -1,0 +1,55 @@
+name: Bug 报告
+description: 报告一个可复现的问题
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请尽量把「操作路径 / 期望 / 实际」写清楚，能附日志和 SQL 输出最好。
+        ⚠️ 请勿在 issue 里粘贴任何口令、Token 或内网地址。
+  - type: textarea
+    id: what
+    attributes:
+      label: 现象
+      description: 你做了什么、期望什么、实际发生了什么
+      placeholder: |
+        1. 打开 /zentao/program
+        2. 新建子项目集 …
+        3. 期望 …，实际 …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / 提交
+      description: git rev-parse --short HEAD 的结果，或你部署的镜像标签
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及模块
+      options:
+        - 产品 / 需求
+        - 项目集 / 项目 / 执行
+        - 任务 / 缺陷
+        - 测试（用例/测试单/报告/仪表盘）
+        - 文档 / 附件 / 工时
+        - 看板 / 度量 / BI / 报表
+        - 系统与集成（权限/代码库/节假日/应用接入/Webhook…）
+        - 部署 / 构建 / 脚本
+        - 不确定
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 日志与证据
+      description: 后端日志（logs/stdout.log）、接口返回、相关表数据；截图可直接拖进来
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 自查
+      options:
+        - label: 已确认不是「禅道开源版本身就没有实现」的模块（见 docs/MODULE-FEASIBILITY-AUDIT.md）
+        - label: 内容里不含任何口令、密钥或内网地址
+          required: true

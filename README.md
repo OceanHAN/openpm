@@ -6,12 +6,15 @@
 
 产品 · 项目 · 执行 · 需求 · 任务 · 缺陷 · 测试 · 文档 · 工时 · 看板 · 度量 · BI · 报表
 
+[![CI](https://github.com/OceanHAN/openpm/actions/workflows/ci.yml/badge.svg)](https://github.com/OceanHAN/openpm/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883.svg)](https://vuejs.org/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1.svg)](https://www.mysql.com/)
 [![Tests](https://img.shields.io/badge/API%20tests-43%20suites%20%2F%201704%20assertions-success.svg)](#测试与验证)
+
+<sub><a href="README.md">中文</a> · <a href="README.en.md">English</a></sub>
 
 </div>
 
@@ -32,6 +35,19 @@
 - **不是开箱即用的 SaaS**：定位是自建部署的研发管理平台，需要自己准备 MySQL 8 / Redis 7 与构建环境。
 
 > 「禅道 / ZenTao」是其权利人的商标，本项目仅在说明兼容性时引用该名称。
+
+## 界面预览
+
+| 项目集（项目集 / 项目 / 执行共表） | 看板 |
+|---|---|
+| ![项目集](docs/images/program.png) | ![看板](docs/images/kanban.png) |
+
+| 度量 | 接口文档库 |
+|---|---|
+| ![度量](docs/images/metric.png) | ![接口文档库](docs/images/api-lib.png) |
+
+> 另外还有需求、任务两张截图在 [`docs/images/`](docs/images/)（`story.png`、`task.png`）。
+> 想自己点一遍：见下面「快速开始」，登录后左侧菜单「禅道」下即全部功能。
 
 ## 功能
 
@@ -150,6 +166,8 @@ bash deploy/resume-verification-remote.sh
 | [只做映射的模块](docs/MAP-ONLY-MAPPINGS.md) | 10 个「框架已有等价能力」模块的替代关系 |
 | [剩余模块取证](docs/REMAINING-MODULE-VERDICTS.md) | 24 个模块的逐条证据 |
 | [deploy/README.md](deploy/README.md) | 部署与验证脚本怎么用 |
+| [SECURITY.md](SECURITY.md) | 安全策略与部署方注意事项 |
+| [CHANGELOG.md](CHANGELOG.md) | 变更记录 |
 
 ## 贡献
 
