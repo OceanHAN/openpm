@@ -5,6 +5,11 @@ on:
     branches: [ main ]
   pull_request:
   workflow_dispatch:
+    inputs:
+      only:
+        description: '只跑匹配的脚本（例如 repo；留空跑全部 deploy/test-*.sh）'
+        required: false
+        default: ''
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -108,7 +113,7 @@ jobs:
             sleep 5
           done
           [ "$code" = "200" ] || { echo '::error::后端未就绪'; tail -60 /tmp/backend.log; exit 1; }
-      - name: 跑全部接口回归脚本
+      - name: 跑接口回归脚本
         env:
           ZENTAO_API_BASE: http://127.0.0.1:48080/admin-api
           MYSQL_TARGET: direct
@@ -116,26 +121,28 @@ jobs:
           MYSQL_DIRECT_PORT: '3306'
           MYSQL_DIRECT_USER: root
           MYSQL_DIRECT_PASS: ci-root-pass
+          ONLY: ${{ inputs.only }}
         run: |
           fail=0
-          for f in deploy/test-*.sh; do
+          if [ -n "$ONLY" ]; then SCRIPTS="deploy/test-$ONLY-module.sh"; else SCRIPTS=$(ls deploy/test-*.sh); fi
+          for f in $SCRIPTS; do
             out=$(bash "$f" 2>&1) || true
             ok=$(printf '%s' "$out" | grep -c '✅' || true)
             bad=$(printf '%s' "$out" | grep -c '❌' || true)
             printf '  %-44s ✅ %s / ❌ %s\n' "$(basename "$f")" "$ok" "$bad"
             if [ "$bad" != "0" ]; then
-              printf '%s\n' "$out" | grep '❌' | head -5
+              echo "::group::$(basename "$f") 完整输出"
+              printf '%s\n' "$out" | tail -80
+              echo '--- 即时诊断 ---'
+              mysql -h127.0.0.1 -P3306 -uroot -p"$MYSQL_ROOT_PASSWORD" -D ruoyi-vue-pro -e \
+                "SELECT id,name,path FROM zt_repo ORDER BY id DESC LIMIT 5;
+                 SELECT id,repo,revision,LEFT(comment,50) AS comment FROM zt_repohistory ORDER BY id DESC LIMIT 8;
+                 SELECT * FROM zt_relation ORDER BY id DESC LIMIT 15;" 2>&1 | head -50 || true
+              echo "::endgroup::"
               fail=1
             fi
           done
-          if [ "$fail" != "0" ]; then
-            echo '--- 诊断：最近的提交记录与关系行 ---'
-            mysql -h127.0.0.1 -P3306 -uroot -p"$MYSQL_ROOT_PASSWORD" -D ruoyi-vue-pro -e \
-              "SELECT id,repo,revision,LEFT(comment,60) AS comment FROM zt_repohistory ORDER BY id DESC LIMIT 5;
-               SELECT * FROM zt_relation ORDER BY id DESC LIMIT 10;" 2>&1 | head -40 || true
-            echo '::error::存在失败的接口回归脚本'
-            exit 1
-          fi
+          [ "$fail" = "0" ] || { echo '::error::存在失败的接口回归脚本'; exit 1; }
       - name: 失败时上传后端日志
         if: failure()
         uses: actions/upload-artifact@v4
