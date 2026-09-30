@@ -1,0 +1,11 @@
+# pnpm 11 默认拦截依赖的 postinstall 脚本（供应链安全）。
+# 以下为按需放行结果，由 DSH 于 2026-09-11 填写。
+allowBuilds:
+  # esbuild 必须放行：它的 postinstall 会安装平台原生二进制，
+  # 不放行则 vite 无法启动（找不到 esbuild 可执行文件）
+  esbuild: true
+  # 原生文件监听器，提升 dev server 的 HMR 性能
+  '@parcel/watcher': true
+  # 以下两个的 postinstall 只是打印赞助信息，无需执行
+  core-js-pure: false
+  es5-ext: false

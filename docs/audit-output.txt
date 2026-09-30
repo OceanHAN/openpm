@@ -1,0 +1,275 @@
+==============================================================
+ 禅道模块可迁移性审计（只读）
+ 禅道源码: /Library/allproject/02code/zentaopms
+ yudao   : /Library/allproject/02code/yudao
+ 时间    : 2026-09-17 23:15:06
+==============================================================
+
+模块清单口径：module/ 目录 99 个 + programPriv 点名但目录缺失 22 个 = 121 个
+开源建库脚本 db/zentao.sql 建表 281 张（含 zt_ 与 ops_ 两种前缀，带/不带 IF NOT EXISTS 都算）
+config 里 TABLE_* 常量 272 个（其中 23 个是硬编码 ops_ 前缀）
+
+CSV 表头：模块,PHP行数,action数,目录存在,引用表,缺表,未定义常量,同名表在开源建库脚本,edition!=open文件数,外部关键字文件数,外部服务调用次数,判定,主判定,承载方/依据,缺口
+模块,PHP行数,action数,目录存在,引用表,缺表,未定义常量,同名表在开源建库脚本,edition!=open文件数,外部关键字文件数,外部服务调用次数,判定,主判定,承载方/依据,缺口
+action,10933,10,是,ops_artifact_libs;ops_provider;ops_repo;zt_action;zt_actionproduct;zt_actionrecent;zt_ai_assistant;zt_api;zt_assetlib;zt_auditplan;zt_bug;zt_build;zt_case;zt_casestep;zt_charter;zt_config;zt_deliverable;zt_demand;zt_doc;zt_doccontent;zt_doclib;zt_file;zt_history;zt_kanban;zt_kanbanspace;zt_module;zt_object;zt_overtime;zt_pivotspec;zt_product;zt_project;zt_projectproduct;zt_projectstory;zt_review;zt_scene;zt_stage;zt_stakeholder;zt_story;zt_storygrade;zt_task;zt_team;zt_testsuite;zt_testtask;zt_todo;zt_user;zt_workflow,,TABLE_BOARD_LIB,是,2,7,0,已迁移,已迁移,-,-
+admin,3224,22,是,zt_action;zt_dept;zt_log;zt_metriclib;zt_project;zt_projectdeliverable;zt_sqlite_queue;zt_user,zt_sqlite_queue,,否,1,0,2,待做,A,yudao-module-system + yudao-module-infra 后台（system_users/system_role/system_menu/infra_config；页面 yudao-ui-admin-vue3/src/views/system、views/infra）,无
+ai,11707,27,是,zt_ai_agent;zt_ai_agentfield;zt_ai_agentrole;zt_ai_assistant;zt_ai_message;zt_ai_miniprogram;zt_ai_miniprogramfield;zt_ai_miniprogramstar;zt_ai_model;zt_bug;zt_build;zt_case;zt_config;zt_doc;zt_doclib;zt_im_chat;zt_issue;zt_product;zt_productplan;zt_project;zt_projectproduct;zt_projectstory;zt_release;zt_risk;zt_story;zt_task;zt_ticket;zt_workflow;zt_workflowaction,zt_im_chat,,否,7,0,6,待做,A,yudao-module-ai：AiChatConversationController/AiModelController/AiKnowledgeController/AiWorkflowController（页面 src/views/ai）,禅道 ai 的模型渠道配置可映射到 AiModelController
+aiapp,2198,9,是,zt_ai_message;zt_ai_miniprogram;zt_ai_miniprogramstar,,,否,0,4,0,待做,B,yudao-module-ai（chat/workflow/model + src/views/ai）,禅道 aiapp 的「AI 小程序/应用编排」无对应，要就得重写
+api,3848,33,是,zt_api;zt_api_lib_release;zt_apispec;zt_apistruct;zt_apistruct_spec;zt_doclib;zt_module;zt_product;zt_project;zt_user,,,是,3,0,0,已迁移,已迁移,-,-
+approval,0,0,否,zt_approval;zt_approvalflow;zt_approvalflowobject;zt_approvalflowspec;zt_approvalnode;zt_approvalobject;zt_approvalrole,,,是,0,0,0,开源版无实现,A,yudao-module-bpm（Flowable）：BpmModelController/BpmTaskController/BpmProcessInstanceController、BpmProcessInstanceCopyController（抄送）、BpmUserTaskApproveMethodEnum（或签/会签）、页面 src/views/bpm,禅道 zt_approval* 7 张表的审批流能力由 bpm 整体承接；差异是禅道按对象挂审批，yudao 走流程实例
+artifact,2014,19,是,ops_artifact_assets;ops_artifact_blobs;ops_artifact_groups;ops_artifact_libs;ops_artifact_packages;ops_artifact_versions;ops_repo;ops_repouser;zt_action,,,否,0,2,19,待做,C,无替代（制品库 ops_artifact_* 表在开源版）,需重写制品库（含与仓库/流水线的联动）
+auditplan,0,0,否,zt_auditplan,,,是,0,0,0,开源版无实现,C,无替代（IPD 审计计划，模块目录不在开源版）,需重写
+backup,1482,11,是,,,TABLE_SCHEMA,否,0,0,0,待做,C,无替代（yudao 只有 infra/druid 监控页，无备份/还原）,需重写或直接用 mysqldump/xtrabackup
+bi,20147,6,是,zt_action;zt_chart;zt_dimension;zt_duckdbqueue;zt_metric;zt_module;zt_pivot;zt_pivotdrill;zt_pivotspec;zt_screen,,,否,0,0,2,部分,部分,-,DuckDB/Parquet 引擎、zt_pivot/zt_screen 未迁
+block,8968,9,是,zt_block;zt_bug;zt_build;zt_case;zt_config;zt_cron;zt_demandpool;zt_doc;zt_docblock;zt_durationestimation;zt_meeting;zt_product;zt_productplan;zt_project;zt_projectproduct;zt_release;zt_story;zt_task;zt_team;zt_testrun;zt_testtask;zt_user;zt_weeklyreport;zt_workflow,,,是,5,0,0,部分,部分,-,可配置积木引擎未搬，qa/report 已做等价聚合
+branch,1621,10,是,zt_branch;zt_bug;zt_build;zt_case;zt_module;zt_product;zt_productplan;zt_project;zt_projectproduct;zt_projectstory;zt_release;zt_story,,,是,0,0,0,已迁移,已迁移,-,-
+budget,0,0,否,zt_budget,,,是,0,0,0,开源版无实现,C,无替代（IPD 预算，模块目录不在开源版）,需重写
+bug,10263,43,是,ops_repohistory;zt_action;zt_bug;zt_build;zt_case;zt_file;zt_history;zt_kanbancell;zt_kanbancolumn;zt_kanbanlane;zt_module;zt_product;zt_productplan;zt_project;zt_projectproduct;zt_relation;zt_release;zt_story;zt_storyspec;zt_task;zt_testresult;zt_testtask;zt_todo,,,是,3,11,0,已迁移,已迁移,-,-
+build,3028,19,是,zt_branch;zt_bug;zt_build;zt_product;zt_project;zt_release;zt_releaserelated;zt_story;zt_storystage,,,是,0,0,0,已迁移,已迁移,-,-
+cache,341,2,是,,,,否,0,0,0,待做,A,Redis（infra/redis 监控页 src/views/infra/redis + Spring Cache）,禅道 cache 模块只是缓存管理页，无业务逻辑
+caselib,2293,16,是,zt_case;zt_testsuite,,,否,1,0,0,已迁移,已迁移,-,-
+chart,1525,4,是,zt_chart;zt_module,,,是,1,0,0,已迁移,已迁移,-,-
+ci,402,4,是,ops_pipeline;zt_compile;zt_project;zt_projectproduct;zt_testtask,,TABLE_JOB;TABLE_MR,否,0,5,0,待做,C,无替代（禅道 ci 是持续集成构建结果回传）,需重写/接外部 CI
+cm,0,0,否,zt_cmcl,,,否,0,0,0,开源版无实现,C,无替代（配置管理，模块目录不在开源版）,需重写
+codescan,5932,42,是,zt_bug;zt_user,,,否,0,8,49,外部依赖不可搬,C,无替代；开源版实现是 GitFox 代理（module/codescan/control.php:17 loadModel('gitfox')->checkHealth()）,需接 SonarQube 或自建扫描
+common,9312,0,是,zt_company;zt_dept;zt_group;zt_grouppriv;zt_notify;zt_product;zt_project;zt_projectproduct;zt_relation;zt_storyreview;zt_task;zt_user;zt_usergroup;zt_workflow;zt_workflowfield;zt_workflowrule,,,否,3,2,6,部分,部分,-,公共能力按需重建（操作日志=infra_operate_log）
+company,1079,7,是,zt_action;zt_actionproduct;zt_company;zt_grouppriv;zt_product;zt_project;zt_task;zt_user;zt_usergroup,,,是,0,0,0,已迁移,已迁移,-,-
+convert,8969,18,是,zt_action;zt_bug;zt_build;zt_burn;zt_case;zt_casespec;zt_casestep;zt_company;zt_doc;zt_doclib;zt_effort;zt_feedback;zt_file;zt_group;zt_grouppriv;zt_history;zt_module;zt_product;zt_productplan;zt_project;zt_projectproduct;zt_projectstory;zt_release;zt_searchdict;zt_story;zt_storyspec;zt_storystage;zt_system;zt_task;zt_team;zt_testresult;zt_ticket;zt_user;zt_usergroup;zt_workflow;zt_workflowaction;zt_workflowfield;zt_workflowgroup;zt_workflowlayout,,TABLE_ATTACHMENTS;TABLE_AUTH_SOURCES;TABLE_BOARDS;TABLE_BUGINFO;TABLE_CASEINFO;TABLE_CHANGES;TABLE_CHANGESETS;TABLE_CHANGESETS_ISSUES;TABLE_COMMENTS;TABLE_CUSTOM_FIELDS;TABLE_CUSTOM_FIELDS_EXECUTIONS;TABLE_CUSTOM_FIELDS_TRACKERS;TABLE_CUSTOM_VALUES;TABLE_DOCUMENTS;TABLE_ENABLED_MODULES;TABLE_ENUMERATIONS;TABLE_EXECUTIONS;TABLE_EXECUTIONS_TRACKERS;TABLE_GROUPS_USERS;TABLE_ISSUE_CATEGORIES;TABLE_ISSUE_RELATIONS;TABLE_ISSUE_STATUSES;TABLE_ISSUES;TABLE_JOURNAL_DETAILS;TABLE_JOURNALS;TABLE_MEMBER_ROLES;TABLE_MEMBERS;TABLE_MESSAGES;TABLE_NEWS;TABLE_OPEN_ID_AUTHENTICATION_ASSOCIATIONS;TABLE_OPEN_ID_AUTHENTICATION_NONCES;TABLE_OPTION;TABLE_QUERIES;TABLE_REPOSITORIES;TABLE_RESULTINFO;TABLE_ROLES;TABLE_SCHEMA_MIGRATIONS;TABLE_SETTINGS;TABLE_TIME_ENTRIES;TABLE_TOKENS;TABLE_TRACKERS;TABLE_USER_PREFERENCES;TABLE_USERS;TABLE_VERSIONS;TABLE_WATCHERS;TABLE_WIKI_CONTENT_VERSIONS;TABLE_WIKI_CONTENTS;TABLE_WIKI_PAGES;TABLE_WIKI_REDIRECTS;TABLE_WIKIS;TABLE_WORKFLOWS,否,1,0,3,待做,B,yudao-spring-boot-starter-excel（ExcelUtils）可承接文件型导入,异构源库（BugFree/Redmine/Jira）适配器需重写；且只需一次性执行，不该做成常驻模块
+cron,1132,13,是,zt_config;zt_cron;zt_queue,,,是,0,0,0,待做,A,infra_job / infra_job_log + 页面 src/views/infra/job（Quartz）,无
+custom,4437,25,是,zt_assetlib;zt_auditplan;zt_block;zt_config;zt_cron;zt_deliverable;zt_gapanalysis;zt_issue;zt_lang;zt_meeting;zt_object;zt_opportunity;zt_programactivity;zt_project;zt_projectchange;zt_projectdeliverable;zt_researchplan;zt_review;zt_risk;zt_stakeholder;zt_story;zt_userquery,,,否,0,0,0,待做,B,system_dict_type / system_dict_data + infra_codegen_table/column（字段配置）,禅道「自定义字段 + 自定义流程」引擎（zt_workflow* 表在开源版但无实现可搬）需重写
+datatable,1086,6,是,zt_product;zt_projectproduct,,,否,1,0,0,待做,B,infra_codegen_table / infra_codegen_column（字段配置）+ 前端 Table 组件列设置,禅道 datatable 是用户级「列表字段可见性」配置，yudao 无等价功能
+dataview,2184,1,是,,,,是,5,0,0,已迁移,已迁移,-,（由 bi 的 SQL 模式承载：zt_dataview 已落表，bi 控制器有 dataview CRUD/preview）
+dept,828,6,是,zt_dept;zt_user,,,是,0,0,0,已迁移,已迁移,-,-
+design,1906,16,是,ops_repohistory;zt_deliverable;zt_design;zt_designspec;zt_module;zt_product;zt_projectdeliverable;zt_relation;zt_task,,,是,3,0,0,待做,C,无替代（设计稿/UI 规范管理）,需重写
+dev,2772,6,是,zt_lang;zt_workflow,,,否,1,6,0,待做,B,infra/swagger（接口调试）、infra/druid（SQL 监控）、infra/codegen（页面 src/views/infra）,禅道的语言项管理、数据库表结构查看器无对应（可用 IDE/DB 客户端替代）
+dimension,469,2,是,zt_dimension,,,是,0,0,0,已迁移,已迁移,-,-
+doc,14505,70,是,zt_action;zt_bug;zt_build;zt_case;zt_design;zt_doc;zt_docaction;zt_docblock;zt_doccontent;zt_doclib;zt_feedback;zt_file;zt_issue;zt_lang;zt_meeting;zt_module;zt_product;zt_productplan;zt_project;zt_projectcase;zt_projectdeliverable;zt_projectstory;zt_release;zt_review;zt_story;zt_task;zt_testreport;zt_testresult;zt_testtask;zt_ticket;zt_user;zt_userview,,,是,6,0,0,已迁移,已迁移,-,-
+durationestimation,0,0,否,zt_durationestimation,,,是,0,0,0,开源版无实现,C,无替代（工期估算，模块目录不在开源版）,需重写（workestimation 只覆盖工作量/成本）
+editor,1205,8,是,,,,否,0,0,0,待做,A,前端组件 yudao-ui-admin-vue3/src/components/Editor + infra_file,无
+entry,761,5,是,zt_entry;zt_log,,,是,0,1,0,已迁移,已迁移,-,-
+epic,829,33,是,,,,否,0,0,0,已迁移,已迁移,-,-
+execution,16918,72,是,zt_acl;zt_action;zt_branch;zt_bug;zt_build;zt_burn;zt_case;zt_cfd;zt_deliverable;zt_deliverablestage;zt_doc;zt_doclib;zt_effort;zt_kanbancell;zt_kanbancolumn;zt_kanbanlane;zt_module;zt_product;zt_productplan;zt_project;zt_projectcase;zt_projectdeliverable;zt_projectproduct;zt_projectstory;zt_relation;zt_story;zt_storyspec;zt_task;zt_taskteam;zt_team;zt_testreport;zt_testtask;zt_user;zt_userview;zt_workflowaction,,,否,4,0,0,已迁移,已迁移,-,-
+extension,2437,11,是,zt_extension,,,是,0,0,0,待做,B,infra_codegen（生成新模块）,yudao 无插件市场/扩展包机制，禅道 extension 的扩展安装卸载需重写
+feedback,44,0,是,zt_feedback,,,是,0,0,0,开源版无实现,C,无替代（开源版只有 44 行存根；zt_feedback/zt_feedbackview 在开源版）,真实实现属付费版，需重写
+file,3015,21,是,zt_build;zt_case;zt_doc;zt_feedback;zt_file;zt_release;zt_storyspec;zt_usertpl;zt_workflowfield,,,是,0,0,0,已迁移,已迁移,-,-
+gapanalysis,0,0,否,zt_gapanalysis,,,是,0,0,0,开源版无实现,C,无替代（差距分析，模块目录不在开源版）,需重写
+gitfox,2325,4,是,ops_repo;ops_repohistory;zt_bug;zt_entry;zt_story;zt_task,,,否,0,55,0,外部依赖不可搬,C,无替代（GitFox 是禅道商业代码扫描服务，模块本身就是它的客户端）,需接第三方扫描服务，属集成而非迁移
+gitlab,1578,0,是,ops_pipeline_executions,,,否,0,0,7,外部依赖不可搬,C,无替代；开源版 control.php/config 已被上游删除（commit 53c5c88791，2026-01-21），只剩 249 行 model.php 作为 GitLab REST 客户端,需重写 GitLab 集成
+group,12761,12,是,ops_spaceuser;zt_dept;zt_group;zt_grouppriv;zt_product;zt_project;zt_projectadmin;zt_user;zt_usergroup;zt_userview,,,是,0,8,0,已迁移,已迁移,-,-
+holiday,901,6,是,zt_holiday;zt_project;zt_task,,,是,0,0,0,已迁移,已迁移,-,-
+index,408,6,是,,,,否,1,0,0,待做,A,yudao 首页 yudao-ui-admin-vue3/src/views/Home/Index.vue,无
+install,3425,11,是,zt_acl;zt_activity;zt_basicmeas;zt_company;zt_config;zt_cron;zt_group;zt_lang;zt_process;zt_stage;zt_user;zt_workflowdatasource;zt_workflowrule;zt_zoutput,,,否,2,6,0,待做,A,yudao 用部署脚本 + sql/mysql/ruoyi-vue-pro.sql 初始化，无 Web 安装向导需求,无
+issue,0,0,否,zt_issue,,,是,0,0,0,开源版无实现,C,无替代（问题管理，模块目录不在开源版）,需重写
+jenkins,338,1,是,ops_pipeline;ops_pipeline_executions,,,否,0,11,0,外部依赖不可搬,C,无替代（module/jenkins 338 行，就是 Jenkins API 客户端）,需重写 Jenkins 集成
+kanban,9545,60,是,zt_action;zt_bug;zt_kanban;zt_kanbancard;zt_kanbancell;zt_kanbancolumn;zt_kanbangroup;zt_kanbanlane;zt_kanbanregion;zt_kanbanspace;zt_module;zt_notify;zt_project;zt_projectproduct;zt_story;zt_storystage;zt_task;zt_taskteam;zt_user,,,是,4,0,0,已迁移,已迁移,-,-
+mail,2160,12,是,zt_action;zt_notify;zt_product;zt_project;zt_user,,,否,0,0,0,待做,A,system_mail_account / system_mail_template / system_mail_log（sql/mysql/ruoyi-vue-pro.sql 实测建表）+ 页面 src/views/system/mail,无
+mark,121,0,是,zt_mark,,,是,0,0,0,待做,A,禅道 mark 是内部已读标记服务（121 行、0 个 control action，仅被 pivot 调用）,yudao 列表页无此需求
+measrecord,0,0,否,zt_measrecords,,,否,0,0,0,开源版无实现,C,无替代（测量记录，模块目录不在开源版）,需重写
+meeting,0,0,否,zt_meeting;zt_meetingroom,,,是,0,0,0,开源版无实现,C,无替代（会议管理，模块目录不在开源版）,需重写
+message,1435,10,是,zt_action;zt_notify;zt_testtask;zt_todo;zt_user,,,否,1,0,0,待做,A,system_notify_message / system_notify_template + system_notice + 页面 src/views/system/notify、src/views/system/notice,无
+metric,29666,12,是,ops_pipeline;ops_pipeline_executions;ops_ppm;ops_repo;ops_repohistory;zt_action;zt_artifactrepo;zt_auditplan;zt_basicmeas;zt_bug;zt_build;zt_case;zt_casestep;zt_config;zt_demand;zt_deploy;zt_doc;zt_effort;zt_feedback;zt_host;zt_image;zt_instance;zt_issue;zt_metric;zt_metriclib;zt_module;zt_nc;zt_product;zt_productplan;zt_project;zt_projectcase;zt_projectstory;zt_relation;zt_release;zt_reviewissue;zt_risk;zt_story;zt_storyreview;zt_task;zt_taskteam;zt_team;zt_testresult;zt_testrun;zt_testtask;zt_ticket;zt_user,,TABLE_ENV,是,1,7,0,部分,部分,-,414 个 calc 口径只迁 15 个（MetricRegistry 实测 15 条 register）
+milestone,0,0,否,,,,否,0,0,0,开源版无实现,C,无替代（里程碑，模块目录不在开源版）,需重写
+misc,3109,15,是,zt_bug;zt_case;zt_config;zt_doc;zt_product;zt_project;zt_story;zt_task;zt_user,,,否,0,5,3,待做,B,CaptchaController（yudao-module-system/framework/captcha）+ infra 监控页,checkUpdate/checkExtension/checkNetConnect（禅道官网连通性检查）无对应且不需要
+mr,0,0,否,,,,否,0,0,0,开源版无实现,C,无替代；模块目录与 zt_mr 表都不在开源版,需重写合并请求
+my,7925,44,是,ops_ppm;ops_request_reviewers;ops_review_flow;zt_action;zt_approvalnode;zt_approvalobject;zt_bug;zt_case;zt_demand;zt_demandreview;zt_doc;zt_group;zt_grouppriv;zt_planstory;zt_product;zt_productplan;zt_project;zt_projectproduct;zt_release;zt_review;zt_reviewissue;zt_risk;zt_story;zt_storyreview;zt_task;zt_taskteam;zt_team;zt_testrun;zt_testtask;zt_user;zt_usergroup;zt_workflow;zt_workflowfield,,,否,15,2,8,已迁移,已迁移,-,-
+nc,0,0,否,zt_nc,,,是,0,0,0,开源版无实现,C,无替代（不符合项，模块目录不在开源版）,需重写
+opportunity,0,0,否,zt_opportunity,,,是,0,0,0,开源版无实现,C,无替代（机会管理，模块目录不在开源版）,需重写
+personnel,1508,5,是,zt_acl;zt_bug;zt_effort;zt_group;zt_issue;zt_product;zt_project;zt_risk;zt_story;zt_task;zt_taskteam;zt_team;zt_user;zt_usergroup;zt_userview,,,否,0,0,0,待做,B,yudao-module-hrm（HrmEmployeeController 等 60+ 控制器）+ 已迁 effort/team,禅道 personnel 的跨项目工时/风险视图（zt_userview）需基于已迁表重写
+pipeline,4228,31,是,ops_pipeline;ops_pipeline_content;ops_pipeline_executions;ops_provider;ops_repo;ops_triggers,,TABLE_JOB,是,0,29,28,外部依赖不可搬,B,infra_job（定时任务）+ yudao 无 CI/CD 引擎,流水线/触发器/制品（ops_pipeline* 表在开源版）需自建或接外部 CI
+pivot,6872,6,是,zt_bug;zt_group;zt_module;zt_pivot;zt_pivotdrill;zt_pivotspec;zt_product;zt_productplan;zt_project;zt_projectproduct;zt_projectstory;zt_screen;zt_story;zt_task;zt_taskteam;zt_team;zt_user,,,是,4,0,0,待做,B,yudao-module-report：jimureport 2.5.1 报表设计器（yudao-module-report/pom.xml）+ 页面 src/views/report/jmreport,禅道 zt_pivot 是基于 zt_* 表的透视/下钻，取数层要重写
+ppm,4491,23,是,ops_ppm;ops_repo;ops_repohistory;ops_request_reviewers;ops_review_flow;zt_action;zt_bug;zt_relation;zt_user,,,是,0,7,16,待做,B,yudao-module-pms（PmsProjectGroupController/PmsProjectController/PmsIterationController）+ 已迁 program,禅道 ppm 的评审/决策（zt_review/zt_decision）无对应
+product,8577,41,是,zt_action;zt_branch;zt_bug;zt_build;zt_case;zt_doc;zt_doclib;zt_module;zt_product;zt_productplan;zt_project;zt_projectproduct;zt_release;zt_stakeholder;zt_story;zt_system;zt_team,,,是,6,0,0,已迁移,已迁移,-,-
+productplan,4331,27,是,zt_branch;zt_bug;zt_planstory;zt_product;zt_productplan;zt_project;zt_projectproduct;zt_projectstory;zt_story,,,是,1,0,0,已迁移,已迁移,-,-
+program,4777,24,是,zt_action;zt_module;zt_product;zt_project;zt_projectproduct;zt_stakeholder;zt_task;zt_team;zt_user;zt_userview,,,否,7,0,0,已迁移,已迁移,-,-
+programplan,5082,21,是,zt_action;zt_actionrecent;zt_approvalnode;zt_approvalobject;zt_bug;zt_build;zt_case;zt_decision;zt_deliverable;zt_doc;zt_docblock;zt_doclib;zt_effort;zt_module;zt_object;zt_product;zt_project;zt_projectcase;zt_projectdeliverable;zt_projectproduct;zt_projectspec;zt_projectstory;zt_relationoftasks;zt_review;zt_story;zt_task;zt_taskspec;zt_taskteam;zt_testreport;zt_testtask;zt_user;zt_workflowgroup,,,否,0,0,0,待做,B,已迁 program/project（zt_project type='program'）；zt_projectspec/zt_deliverable 在开源版,IPD 项目集计划（交付物/评审点）无实现可搬
+project,11977,46,是,zt_acl;zt_action;zt_bug;zt_build;zt_case;zt_deliverable;zt_doc;zt_doclib;zt_effort;zt_module;zt_product;zt_project;zt_projectadmin;zt_projectcase;zt_projectdeliverable;zt_projectproduct;zt_projectstory;zt_stakeholder;zt_story;zt_task;zt_team;zt_testreport;zt_testtask;zt_user;zt_userview;zt_workflowgroup,,TABLE_NOT_EXISTS,是,7,0,0,已迁移,已迁移,-,-
+projectbuild,333,11,是,,,,否,0,0,0,已迁移,已迁移,-,-
+projectchange,0,0,否,zt_projectchange,,,是,0,0,0,开源版无实现,C,无替代（变更管理，模块目录不在开源版）,需重写
+projectdeliverable,0,0,否,zt_projectdeliverable,,,是,0,0,0,开源版无实现,C,无替代（交付物，模块目录不在开源版）,需重写
+projectplan,139,6,是,,,,否,0,0,0,已迁移,已迁移,-,-
+projectrelease,1060,17,是,zt_build;zt_product;zt_release,,,否,0,0,0,已迁移,已迁移,-,-
+projectstory,872,20,是,zt_product;zt_project;zt_projectproduct;zt_projectstory;zt_story,,,是,0,0,0,已迁移,已迁移,-,-
+provider,843,6,是,ops_provider;ops_repo,,,是,0,17,0,外部依赖不可搬,C,无替代（代码库服务商 API：GitLab/Gitea/Gitee/SVN，ops_provider 表在开源版）,需重写服务商接入
+pssp,0,0,否,,,,否,0,0,0,开源版无实现,C,无替代（项目特定软件过程，模块目录不在开源版）,需重写
+qa,153,1,是,,,,否,0,0,0,已迁移,已迁移,-,-
+release,3971,17,是,zt_branch;zt_bug;zt_build;zt_deploy;zt_deployproduct;zt_product;zt_project;zt_projectproduct;zt_release;zt_releaserelated;zt_story;zt_storystage;zt_team,,,是,0,0,0,已迁移,已迁移,-,-
+repo,12103,71,是,ops_pipeline;ops_provider;ops_repo;ops_repobranch;ops_repofiles;ops_repohistory;ops_repouser;ops_space;zt_action;zt_bug;zt_deploy;zt_deployproduct;zt_effort;zt_history;zt_product;zt_project;zt_projectproduct;zt_relation;zt_system;zt_task;zt_user;zt_usergroup,,TABLE_JOB,是,0,30,36,已迁移,已迁移,-,-
+repobranchrule,532,3,是,ops_branch_ruleset,,,否,0,0,0,待做,B,已迁 repo（zt_repo/zt_repohistory/zt_repofiles/zt_relation）,分支保护规则（ops_branch_ruleset 表在开源版）未迁
+repobranchtype,903,5,是,ops_branch_type,,,否,0,3,4,待做,B,已迁 repo,分支类型（ops_branch_type 表在开源版）未迁
+reporeviewflow,724,5,是,ops_review_flow,,,否,0,0,0,待做,B,已迁 repo,代码评审流（ops_review_flow 表在开源版）未迁
+report,3048,4,是,zt_action;zt_bug;zt_case;zt_effort;zt_kanban;zt_kanbancard;zt_product;zt_productplan;zt_project;zt_projectstory;zt_story;zt_task;zt_team;zt_testresult;zt_testtask;zt_todo;zt_user,,,是,0,0,0,已迁移,已迁移,-,-
+requirement,810,32,是,,,,否,0,0,0,已迁移,已迁移,-,-
+researchplan,0,0,否,zt_researchplan,,,是,0,0,0,开源版无实现,C,无替代（研究计划，模块目录不在开源版）,需重写
+researchreport,0,0,否,zt_researchreport,,,是,0,0,0,开源版无实现,C,无替代（研究报告，模块目录不在开源版）,需重写
+review,0,0,否,ops_review_flow;zt_review;zt_reviewcl;zt_reviewissue;zt_reviewresult,,,是,0,0,0,开源版无实现,C,无替代（同行评审，模块目录不在开源版）,需重写
+reviewissue,0,0,否,zt_reviewissue,,,是,0,0,0,开源版无实现,C,无替代（评审问题，模块目录不在开源版）,需重写
+risk,0,0,否,zt_risk;zt_riskissue,,,是,0,0,0,开源版无实现,C,无替代（风险管理，模块目录不在开源版）,需重写
+score,982,2,是,zt_bug;zt_case;zt_project;zt_score;zt_story;zt_task;zt_team;zt_user,,,是,0,0,0,已迁移,已迁移,-,-
+screen,4261,10,是,zt_action;zt_bug;zt_case;zt_chart;zt_dept;zt_metric;zt_pivot;zt_product;zt_project;zt_projectstory;zt_screen;zt_story;zt_task;zt_team;zt_user,,,是,0,0,0,待做,B,yudao-module-report 的 GoView 大屏（GoViewProjectController + 页面 src/views/report/goview）,大屏数据源不是禅道 zt_* 口径，取数层要重写
+search,3428,11,是,zt_action;zt_ai_miniprogram;zt_bug;zt_case;zt_casestep;zt_doc;zt_doccontent;zt_doclib;zt_effort;zt_feedbackview;zt_file;zt_product;zt_project;zt_searchdict;zt_searchindex;zt_storyspec;zt_task;zt_testsuite;zt_todo;zt_userquery,,,否,2,0,0,已迁移,已迁移,-,-
+setting,410,0,是,zt_config,,,否,0,0,0,待做,A,infra_config + 页面 src/views/infra/config,无
+space,2218,19,是,ops_artifact_libs;ops_pipeline;ops_repo;ops_repouser;ops_space;ops_spaceuser;zt_action;zt_company;zt_group;zt_grouppriv;zt_product;zt_system;zt_usergroup,,,是,0,4,8,待做,C,无替代（devops 空间 ops_space/ops_spaceuser 表在开源版）,需重写 devops 空间
+sso,928,13,是,zt_bug;zt_task;zt_user,,,否,0,0,0,待做,A,system_oauth2_client + system_social_client/system_social_user + 页面 src/views/system/oauth2、src/views/system/social,无
+stage,1128,9,是,zt_approvalflowobject;zt_decision;zt_project;zt_reviewcl;zt_stage;zt_workflowgroup,,,是,1,0,0,已迁移,已迁移,-,-
+stakeholder,1546,13,是,zt_activity;zt_company;zt_expect;zt_intervention;zt_issue;zt_process;zt_product;zt_programactivity;zt_project;zt_stakeholder;zt_user,,,是,0,0,0,已迁移,已迁移,-,-
+story,16999,54,是,ops_repohistory;zt_action;zt_block;zt_branch;zt_bug;zt_case;zt_deliverable;zt_demand;zt_design;zt_file;zt_history;zt_module;zt_notify;zt_planstory;zt_product;zt_productplan;zt_project;zt_projectcase;zt_projectdeliverable;zt_projectproduct;zt_projectstory;zt_relation;zt_release;zt_roadmap;zt_story;zt_storyestimate;zt_storygrade;zt_storyreview;zt_storyspec;zt_storystage;zt_task;zt_taskspec;zt_taskteam;zt_team;zt_todo;zt_user,,,是,5,0,0,已迁移,已迁移,-,-
+system,2605,30,是,zt_build;zt_cron;zt_product;zt_release;zt_system,,,是,0,0,0,待做,A,yudao-module-system：system_users/system_role/system_menu/system_dept/system_dict_*,无
+task,12442,36,是,ops_repohistory;zt_action;zt_bug;zt_burn;zt_case;zt_design;zt_effort;zt_file;zt_kanbancell;zt_kanbanlane;zt_module;zt_notify;zt_project;zt_relation;zt_relationoftasks;zt_story;zt_task;zt_taskspec;zt_taskteam;zt_team;zt_todo;zt_user,,,是,7,1,0,已迁移,已迁移,-,-
+testcase,12312,55,是,zt_action;zt_branch;zt_bug;zt_case;zt_casespec;zt_casestep;zt_config;zt_deliverable;zt_file;zt_history;zt_module;zt_product;zt_project;zt_projectcase;zt_projectdeliverable;zt_projectstory;zt_relation;zt_scene;zt_story;zt_suitecase;zt_testresult;zt_testrun;zt_testtask,,,否,6,0,0,已迁移,已迁移,-,-
+testreport,2337,6,是,zt_bug;zt_build;zt_case;zt_project;zt_story;zt_testreport;zt_testresult;zt_testrun,,,是,0,0,0,已迁移,已迁移,-,-
+testsuite,1372,14,是,zt_bug;zt_case;zt_casespec;zt_casestep;zt_story;zt_suitecase;zt_testresult;zt_testsuite,,,是,0,0,0,已迁移,已迁移,-,-
+testtask,6716,33,是,zt_action;zt_branch;zt_build;zt_case;zt_casespec;zt_casestep;zt_file;zt_host;zt_product;zt_project;zt_projectcase;zt_projectproduct;zt_projectstory;zt_scene;zt_story;zt_suitecase;zt_testresult;zt_testrun;zt_testsuite;zt_testtask,,TABLE_TESTTASKPRODUCT,是,1,0,0,已迁移,已迁移,-,-
+todo,3549,21,是,zt_bug;zt_feedback;zt_issue;zt_opportunity;zt_product;zt_project;zt_review;zt_risk;zt_story;zt_task;zt_testtask;zt_todo;zt_user,,,是,4,0,0,已迁移,已迁移,-,-
+trainplan,0,0,否,zt_trainplan,,,是,0,0,0,开源版无实现,C,无替代（培训计划，模块目录不在开源版）,需重写
+transfer,1990,5,是,zt_bug;zt_demandspec;zt_file;zt_story;zt_storyspec,,,否,3,0,0,待做,A,yudao-spring-boot-starter-excel（ExcelUtils/PoiExcelUtils）,禅道 transfer 是产品/需求等对象的 Excel 导入导出，能力等价
+tree,4162,14,是,zt_branch;zt_bug;zt_build;zt_case;zt_chart;zt_dataview;zt_doc;zt_feedback;zt_module;zt_product;zt_project;zt_projectcase;zt_projectproduct;zt_projectstory;zt_report;zt_story;zt_task;zt_testrun;zt_ticket;zt_workflowgroup,,,否,1,0,0,已迁移,已迁移,-,-
+tutorial,16434,8,是,zt_action;zt_config,,,否,1,0,0,待做,A,禅道教学演示层（220 处 tutorialMode 钩子喂假数据）,yudao 无此需求
+upgrade,22207,36,是,ops_repo;zt_acl;zt_action;zt_actionproduct;zt_actionrecent;zt_activity;zt_ai_agent;zt_ai_agentfield;zt_ai_model;zt_approval;zt_approvalflow;zt_approvalflowobject;zt_approvalflowspec;zt_approvalnode;zt_attend;zt_auditcl;zt_auditplan;zt_basicmeas;zt_block;zt_bug;zt_build;zt_burn;zt_case;zt_casestep;zt_chart;zt_charter;zt_charterproduct;zt_company;zt_compile;zt_config;zt_cron;zt_dashboard;zt_dataset;zt_dataview;zt_decision;zt_deliverable;zt_deliverablestage;zt_demand;zt_deploystep;zt_dept;zt_design;zt_dimension;zt_doc;zt_docaction;zt_docblock;zt_doccontent;zt_doclib;zt_effort;zt_extension;zt_feedback;zt_file;zt_group;zt_grouppriv;zt_history;zt_im_chat;zt_im_chat_message_index;zt_im_chatuser;zt_im_message;zt_kanban;zt_kanbancard;zt_kanbancell;zt_kanbancolumn;zt_kanbanlane;zt_kanbanspace;zt_lang;zt_leave;zt_lieu;zt_measqueue;zt_metric;zt_metriclib;zt_module;zt_nc;zt_notify;zt_object;zt_overtime;zt_pivot;zt_planstory;zt_process;zt_product;zt_productplan;zt_programactivity;zt_programoutput;zt_project;zt_projectadmin;zt_projectcase;zt_projectdeliverable;zt_projectproduct;zt_projectstory;zt_relation;zt_relationoftasks;zt_release;zt_releaserelated;zt_report;zt_review;zt_reviewcl;zt_reviewissue;zt_riskissue;zt_roadmap;zt_screen;zt_searchindex;zt_sqlbuilder;zt_stage;zt_story;zt_storyreview;zt_storyspec;zt_storystage;zt_task;zt_taskestimate;zt_taskteam;zt_team;zt_testreport;zt_testresult;zt_testrun;zt_testsuite;zt_testtask;zt_ticketrelation;zt_todo;zt_user;zt_usercontact;zt_usergroup;zt_userquery;zt_usertpl;zt_userview;zt_webhook;zt_weeklyreport;zt_workflow;zt_workflowaction;zt_workflowdatasource;zt_workflowfield;zt_workflowgroup;zt_workflowlabel;zt_workflowlayout;zt_workflowrule;zt_workflowsql;zt_workflowui;zt_zoutput,zt_dashboard;zt_im_chat;zt_im_chat_message_index;zt_im_chatuser;zt_im_message,TABLE_COLLATION;TABLE_NAME;TABLE_SCHEMA;TABLE_TYPE,否,3,7,1,待做,B,一次性执行 sql/mysql/ruoyi-vue-pro.sql；yudao 无 flyway/liquibase（pom.xml 实测无）,无自动升级器，版本升级靠手工 SQL
+user,6859,37,是,zt_acl;zt_action;zt_actionrecent;zt_company;zt_config;zt_dept;zt_group;zt_grouppriv;zt_history;zt_im_userdevice;zt_notify;zt_product;zt_project;zt_projectadmin;zt_projectproduct;zt_projectstory;zt_stakeholder;zt_story;zt_task;zt_team;zt_todo;zt_user;zt_usercontact;zt_usergroup;zt_usertpl;zt_userview,zt_im_userdevice,,是,0,0,0,已迁移,已迁移,-,-
+webhook,2213,10,是,zt_action;zt_file;zt_kanbancard;zt_log;zt_meeting;zt_notify;zt_oauth;zt_webhook,,TABLE_AI_TASK,是,0,0,2,已迁移,已迁移,-,-
+weekly,1605,5,是,zt_doc;zt_docblock;zt_doccontent;zt_doclib;zt_effort;zt_module;zt_project;zt_task;zt_weeklyreport;zt_workflowgroup,,,否,0,0,0,待做,C,无替代（zt_weeklyreport 表在开源版，yudao hrm 无周报）,需重写周报
+workestimation,29,0,是,zt_workestimation,,,是,0,0,0,已迁移,已迁移,-,-
+zahost,1601,11,是,zt_host;zt_image,,,否,0,0,5,待做,C,无替代（自动化测试主机）,需重写
+zai,2907,7,是,zt_ai_useragent;zt_bug;zt_build;zt_demand;zt_demandspec;zt_design;zt_designspec;zt_doc;zt_doccontent;zt_doclib;zt_feedback;zt_file;zt_product;zt_productplan;zt_project;zt_story;zt_storyspec;zt_task;zt_testtask,,,否,0,0,2,待做,B,yudao-module-ai（AiChatConversationController/AiKnowledgeController）,禅道 zai 的「禅道内 AI 助手」场景提示词（zt_zoutput）需重写
+zanode,2859,29,是,zt_action;zt_automation;zt_host;zt_image;zt_testresult,,,否,0,0,12,待做,C,无替代（自动化测试节点/虚拟机）,需重写
+
+==============================================================
+ 汇总
+==============================================================
+
+按「判定」（原始可迁移性）：
+  已迁移           48
+  部分               4
+  开源版无实现  23
+  表缺失(付费版)   0
+  外部依赖不可搬   6
+  待做              40
+  合计             121
+
+按「主判定」（A/B/C 新口径）：
+  已迁移           48
+  部分               4
+  A                   16
+  B                   18
+  C                   35
+
+--------------------------------------------------------------
+ 附录 A：开源版无实现（模块目录缺失 / 存根）
+--------------------------------------------------------------
+  approval  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  auditplan  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  budget  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  cm  php=0  action=0  目录=否  同名表在开源建库脚本=否
+  durationestimation  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  feedback  php=44  action=0  目录=是  同名表在开源建库脚本=是
+  gapanalysis  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  issue  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  measrecord  php=0  action=0  目录=否  同名表在开源建库脚本=否
+  meeting  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  milestone  php=0  action=0  目录=否  同名表在开源建库脚本=否
+  mr  php=0  action=0  目录=否  同名表在开源建库脚本=否
+  nc  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  opportunity  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  projectchange  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  projectdeliverable  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  pssp  php=0  action=0  目录=否  同名表在开源建库脚本=否
+  researchplan  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  researchreport  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  review  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  reviewissue  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  risk  php=0  action=0  目录=否  同名表在开源建库脚本=是
+  trainplan  php=0  action=0  目录=否  同名表在开源建库脚本=是
+
+  programPriv 点名但 module/ 目录缺失的全部模块（22 个）：
+approval auditplan budget cm durationestimation gapanalysis issue measrecord meeting milestone mr nc opportunity projectchange projectdeliverable pssp researchplan researchreport review reviewissue risk trainplan 
+
+--------------------------------------------------------------
+ 附录 B：表缺失(付费版) 的实测证据
+--------------------------------------------------------------
+  **0 个模块**：有 module/ 目录的模块里，没有任何模块的「自有表」缺席开源建库脚本。
+  只有少数辅助表没发布（被已发布模块引用）：
+    admin -> 缺 zt_sqlite_queue
+    ai -> 缺 zt_im_chat
+    upgrade -> 缺 zt_dashboard;zt_im_chat;zt_im_chat_message_index;zt_im_chatuser;zt_im_message
+    user -> 缺 zt_im_userdevice
+  以及指向外部源系统/占位符的未定义常量（不是禅道表，不算缺失）：
+    action -> 未定义 TABLE_BOARD_LIB
+    backup -> 未定义 TABLE_SCHEMA
+    ci -> 未定义 TABLE_JOB;TABLE_MR
+    convert -> 未定义 TABLE_ATTACHMENTS;TABLE_AUTH_SOURCES;TABLE_BOARDS;TABLE_BUGINFO;TABLE_CASEINFO;TABLE_CHANGES;TABLE_CHANGESETS;TABLE_CHANGESETS_ISSUES;TABLE_COMMENTS;TABLE_CUSTOM_FIELDS;TABLE_CUSTOM_FIELDS_EXECUTIONS;TABLE_CUSTOM_FIELDS_TRACKERS;TABLE_CUSTOM_VALUES;TABLE_DOCUMENTS;TABLE_ENABLED_MODULES;TABLE_ENUMERATIONS;TABLE_EXECUTIONS;TABLE_EXECUTIONS_TRACKERS;TABLE_GROUPS_USERS;TABLE_ISSUE_CATEGORIES;TABLE_ISSUE_RELATIONS;TABLE_ISSUE_STATUSES;TABLE_ISSUES;TABLE_JOURNAL_DETAILS;TABLE_JOURNALS;TABLE_MEMBER_ROLES;TABLE_MEMBERS;TABLE_MESSAGES;TABLE_NEWS;TABLE_OPEN_ID_AUTHENTICATION_ASSOCIATIONS;TABLE_OPEN_ID_AUTHENTICATION_NONCES;TABLE_OPTION;TABLE_QUERIES;TABLE_REPOSITORIES;TABLE_RESULTINFO;TABLE_ROLES;TABLE_SCHEMA_MIGRATIONS;TABLE_SETTINGS;TABLE_TIME_ENTRIES;TABLE_TOKENS;TABLE_TRACKERS;TABLE_USER_PREFERENCES;TABLE_USERS;TABLE_VERSIONS;TABLE_WATCHERS;TABLE_WIKI_CONTENT_VERSIONS;TABLE_WIKI_CONTENTS;TABLE_WIKI_PAGES;TABLE_WIKI_REDIRECTS;TABLE_WIKIS;TABLE_WORKFLOWS
+    metric -> 未定义 TABLE_ENV
+    pipeline -> 未定义 TABLE_JOB
+    project -> 未定义 TABLE_NOT_EXISTS
+    repo -> 未定义 TABLE_JOB
+    testtask -> 未定义 TABLE_TESTTASKPRODUCT
+    upgrade -> 未定义 TABLE_COLLATION;TABLE_NAME;TABLE_SCHEMA;TABLE_TYPE
+    webhook -> 未定义 TABLE_AI_TASK
+
+  说明：历史上被判「表缺失」的模块，真实表名/前缀是：
+    space          -> ops_space                        在开源建库脚本里
+    artifact       -> ops_artifact_libs                在开源建库脚本里
+    pipeline       -> ops_pipeline                     在开源建库脚本里
+    ppm            -> ops_ppm                          在开源建库脚本里
+    provider       -> ops_provider                     在开源建库脚本里
+    repo           -> ops_repo                         在开源建库脚本里
+    weekly         -> zt_weeklyreport                  在开源建库脚本里
+    personnel      -> zt_userview                      在开源建库脚本里
+    mail           -> zt_notify                        在开源建库脚本里
+    message        -> zt_notify                        在开源建库脚本里
+    setting        -> zt_config                        在开源建库脚本里
+    programplan    -> zt_projectspec                   在开源建库脚本里
+    sso            -> zt_user(无自有表)            不在开源建库脚本里
+    datatable      -> zt_product/zt_projectproduct(无自有表) 不在开源建库脚本里
+    codescan       -> ops_scan_plans 等(表在开源版但代码走 GitFox) 不在开源建库脚本里
+    （辅助表） -> zt_mr                            **未发布**
+    （辅助表） -> zt_dashboard                     **未发布**
+    （辅助表） -> zt_im_chat                       **未发布**
+    （辅助表） -> zt_im_message                    **未发布**
+    （辅助表） -> zt_im_userdevice                 **未发布**
+    （辅助表） -> zt_sqlite_queue                  **未发布**
+
+--------------------------------------------------------------
+ 附录 C：外部依赖不可搬 的实测证据（control/model/zen/tao 里的调用次数）
+--------------------------------------------------------------
+  codescan  loadModel+curl=49  外部关键字文件=8  php=5932  action=42
+  gitfox  loadModel+curl=0  外部关键字文件=55  php=2325  action=4
+  gitlab  loadModel+curl=7  外部关键字文件=0  php=1578  action=0
+  jenkins  loadModel+curl=0  外部关键字文件=11  php=338  action=1
+  pipeline  loadModel+curl=28  外部关键字文件=29  php=4228  action=31
+  provider  loadModel+curl=0  外部关键字文件=17  php=843  action=6
+
+--------------------------------------------------------------
+ 附录 D：部分迁移 的实测缺口
+--------------------------------------------------------------
+  metric : 禅道 module/metric/calc/*.php = 414 个口径；yudao MetricRegistry register() = 15 条
+  bi     : yudao @TableName 里没有 zt_pivot/zt_pivotspec/zt_pivotdrill/zt_screen/zt_duckdbqueue（实测 67 张已迁表）
+  common : yudao 46 个 controller 目录里没有 common；操作日志走 infra_operate_log/system_operate_log
+  block  : yudao @TableName 里没有 zt_block；等价聚合落在 qa/report
+
+--------------------------------------------------------------
+ 附录 E：yudao 侧实测能力（A/B 判定的承载方依据）
+--------------------------------------------------------------
+  infra_config                 存在
+  infra_job                    存在
+  infra_job_log                存在
+  infra_codegen_table          存在
+  infra_codegen_column         存在
+  infra_data_source_config     存在
+  system_mail_account          存在
+  system_mail_template         存在
+  system_mail_log              存在
+  system_notify_message        存在
+  system_notify_template       存在
+  system_notice                存在
+  system_oauth2_client         存在
+  system_social_client         存在
+  system_dict_type             存在
+  system_operate_log           存在
+  yudao-module-bpm         : Flowable 工作流（BpmModelController/BpmTaskController/BpmProcessInstanceCopyController/BpmUserTaskApproveMethodEnum）
+  yudao-module-report      : jimureport 2.5.1（yudao-module-report/pom.xml）+ GoView（GoViewProjectController）
+  yudao-module-ai          : AiChatConversationController 等 14 个控制器
+  yudao-module-pms         : PmsProjectGroupController/PmsProjectController/PmsIterationController
+  yudao-module-hrm         : HrmEmployeeController 等 60+ 控制器
+  yudao-module-system/infra: 验证码 CaptchaController、Excel ExcelUtils、前端组件 src/components/Editor
+
+审计完成（只读，未修改任何文件）。

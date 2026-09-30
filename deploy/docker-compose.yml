@@ -1,0 +1,73 @@
+# ---------------------------------------------------------------------------
+# yudao (ruoyi-vue-pro) 容器栈 —— 192.168.0.119:/data/yudao（从 192.168.0.183 迁移过来）
+#
+# 与 183 上那份保持一致的端口/口令/字符集/时区：
+#   MySQL  3307 -> 3306（utf8mb4、lower_case_table_names=1、default-time-zone=+08:00）
+#   Redis  6380 -> 6379（requirepass、appendonly、512mb noeviction）
+# 数据持久化在 ./data 下（bind mount，不是 docker volume，方便整目录搬迁）。
+#
+# 与 183 的唯一差别：**没有把 ./sql 挂到 /docker-entrypoint-initdb.d**
+#   —— 183 上是「初始化时执行 01~55 建库」+ 后续手动灌补丁；119 这里直接用
+#      mysqldump 的逻辑备份整库恢复（与 183 完全一致，且不受初始化脚本演进影响）。
+#      ./sql 目录仍然保留在磁盘上，需要从零重建时再挂上去。
+#
+# 用法：
+#   cd /data/yudao && docker compose up -d
+#   docker compose logs -f mysql
+# ---------------------------------------------------------------------------
+name: yudao-stack
+
+services:
+  mysql:
+    container_name: yudao-mysql
+    image: mysql:8.0
+    restart: unless-stopped
+    tty: true
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --lower_case_table_names=1
+      - --default-time-zone=+08:00
+      - --max_allowed_packet=1G
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_PASS:?请在 deploy/.env 或环境变量里设置 MYSQL_PASS}"
+      MYSQL_DATABASE: "ruoyi-vue-pro"
+      TZ: Asia/Shanghai
+    ports:
+      - "0.0.0.0:3307:3306"
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  redis:
+    container_name: yudao-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --requirepass
+      - "${REDIS_PASS:?请在 deploy/.env 或环境变量里设置 REDIS_PASS}"
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 512mb
+      - --maxmemory-policy
+      - noeviction
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "0.0.0.0:6380:6379"
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a "$$REDIS_PASS" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s

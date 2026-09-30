@@ -1,0 +1,12 @@
+# 让容器初始化时执行的 mysql 客户端默认使用 utf8mb4。
+#
+# 为什么必须有这个文件：docker-entrypoint 是用 `mysql < xx.sql` 逐个执行 /docker-entrypoint-initdb.d
+# 里的脚本的，而 mysql 客户端默认字符集在这套镜像里是 latin1 —— 于是脚本里的中文会被**双重编码**
+# （'禅' 的 E7A685 被当成 latin1 存成 C3A7C2A6E280A6，读出来就是「ç¦…」）。
+# 远端那套是手工 `mysql --default-character-set=utf8mb4 < xx.sql` 灌的，所以没暴露这个问题；
+# 从空库初始化这条路一直到本机栈才第一次被真正跑通，这个坑也就第一次冒出来。
+[client]
+default-character-set = utf8mb4
+
+[mysql]
+default-character-set = utf8mb4

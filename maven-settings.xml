@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  yudao 项目专用 Maven 配置（阿里云镜像）
+
+  用途：本机直连 Maven 中央仓库实测仅 ~40KB/s，而 Spring Boot 4.1.1 及其传递依赖
+        在本机 ~/.m2 中完全没有缓存，直连需要数小时。
+
+  用法：
+    cd ruoyi-vue-pro
+    mvn -s ../maven-settings.xml clean package -DskipTests
+
+  想全局生效的话，把这个文件复制到 ~/.m2/settings.xml 即可
+  （本机目前没有 ~/.m2/settings.xml，所以是纯新增，不会覆盖任何东西）。
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                              https://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <mirrors>
+    <mirror>
+      <id>aliyunmaven</id>
+      <mirrorOf>*</mirrorOf>
+      <name>阿里云公共仓库</name>
+      <url>https://maven.aliyun.com/repository/public</url>
+    </mirror>
+  </mirrors>
+
+</settings>

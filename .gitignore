@@ -1,0 +1,31 @@
+# ---- 依赖与构建产物（体积大 / 可再生）----
+node_modules/
+**/node_modules/
+dist/
+**/target/
+*.class
+*.jar
+*.war
+
+# ---- 运行时数据与日志 ----
+deploy/local-stack/data/
+**/logs/
+*.log
+*.log.*
+
+# ---- 本机/环境相关（每个环境不一样，或含口令）----
+.env.local
+**/.vite/
+deploy/_secrets.sh
+deploy/.mysql_pass
+.secrets/
+
+# ---- 编辑器与系统 ----
+.DS_Store
+**/.DS_Store
+.idea/
+*.iml
+.vscode/
+*.swp
+deploy/.env
+deploy/local-stack/.env

@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------------------
+# 本机验证栈（远端 192.168.0.183 不可达时的替代路径）
+#
+# 背景：项目原本用远端那套容器栈（deploy/docker-compose.yml，部署在 192.168.0.183）。
+# 一旦本机换网段/断网，远端就不可达，接口回归与浏览器检查全部没法跑。
+# 这个 compose 用**同一份 SQL**（deploy/sql/01~35）在本机起一套等价的 MySQL+Redis，
+# 端口与远端保持一致（3307 / 6380），所以后端只要把地址从 192.168.0.183 换成 127.0.0.1
+# 就能跑，其它配置一行都不用改。
+#
+# 好处不只是"能跑"：它同时验证了 **deploy/sql/01~35 能从零建出整个库**
+# （之前这些脚本是分批灌到远端已有库上的，从零初始化这条路一直没被验证过）。
+#
+# 用法：
+#   cd deploy/local-stack
+#   docker compose up -d          # 首次会依次执行 sql/01~35（几分钟）
+#   docker compose logs -f mysql  # 看初始化到哪一步
+#   docker compose down           # 停掉（数据留在 ./data）
+#   docker compose down -v && rm -rf data   # 彻底重来
+# ---------------------------------------------------------------------------
+name: yudao-local
+
+services:
+  mysql:
+    container_name: yudao-local-mysql
+    image: mysql:8.0
+    restart: unless-stopped
+    tty: true
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --lower_case_table_names=1
+      - --default-time-zone=+08:00
+      - --max_allowed_packet=1G
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_PASS:?请在 deploy/local-stack/.env 或环境变量里设置 MYSQL_PASS}"
+      MYSQL_DATABASE: "ruoyi-vue-pro"
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+      - ../sql:/docker-entrypoint-initdb.d:ro
+      # 客户端也要 utf8mb4，否则脚本里的中文会被双重编码（见 conf/charset.cnf 的注释）
+      - ./conf/charset.cnf:/etc/mysql/conf.d/charset.cnf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    container_name: yudao-local-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASS:?请在 deploy/local-stack/.env 或环境变量里设置 REDIS_PASS}", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "6380:6379"
+    volumes:
+      - ./data/redis:/data
