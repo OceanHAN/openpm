@@ -51,13 +51,6 @@ jobs:
         options: >-
           --health-cmd "mysqladmin ping -h127.0.0.1 -uroot -pci-root-pass --silent"
           --health-interval 10s --health-timeout 5s --health-retries 30
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -86,6 +79,13 @@ jobs:
       - name: 准备 secrets（CI 用一次性口令）
         run: |
           printf "export MYSQL_PASS='ci-root-pass'\nexport REDIS_PASS=''\nexport SSH_PASS=''\n" > deploy/_secrets.sh
+      - name: 启动 Redis（带口令）
+        run: |
+          docker run -d --name redis-ci -p 6379:6379 redis:7-alpine redis-server --requirepass ci-redis-pass
+          for i in $(seq 1 30); do
+            docker exec redis-ci redis-cli -a ci-redis-pass ping 2>/dev/null | grep -q PONG && { echo 'Redis 就绪'; break; }
+            sleep 2
+          done
       - name: 启动后端并等待就绪
         run: |
           nohup java -Duser.timezone=Asia/Shanghai -jar /tmp/jar/yudao-server.jar \
@@ -96,7 +96,7 @@ jobs:
             --spring.datasource.dynamic.datasource.master.password="$MYSQL_ROOT_PASSWORD" \
             --spring.datasource.dynamic.datasource.slave.username=root \
             --spring.datasource.dynamic.datasource.slave.password="$MYSQL_ROOT_PASSWORD" \
-            --spring.data.redis.host=127.0.0.1 --spring.data.redis.port=6379 \
+            --spring.data.redis.host=127.0.0.1 --spring.data.redis.port=6379 --spring.data.redis.password=ci-redis-pass \
             > /tmp/backend.log 2>&1 &
           code=000
           for i in $(seq 1 72); do
@@ -153,13 +153,6 @@ jobs:
         options: >-
           --health-cmd "mysqladmin ping -h127.0.0.1 -uroot -pci-root-pass --silent"
           --health-interval 10s --health-timeout 5s --health-retries 30
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -180,6 +173,13 @@ jobs:
             mysql -h127.0.0.1 -P3306 -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 ruoyi-vue-pro < "$f" >/dev/null 2>&1 || true
           done
           printf "export MYSQL_PASS='ci-root-pass'\nexport REDIS_PASS=''\nexport SSH_PASS=''\n" > deploy/_secrets.sh
+      - name: 启动 Redis（带口令）
+        run: |
+          docker run -d --name redis-ci -p 6379:6379 redis:7-alpine redis-server --requirepass ci-redis-pass
+          for i in $(seq 1 30); do
+            docker exec redis-ci redis-cli -a ci-redis-pass ping 2>/dev/null | grep -q PONG && { echo 'Redis 就绪'; break; }
+            sleep 2
+          done
       - name: 启动后端
         run: |
           nohup java -Duser.timezone=Asia/Shanghai -jar /tmp/jar/yudao-server.jar \
@@ -188,7 +188,7 @@ jobs:
             --spring.datasource.dynamic.datasource.slave.url="jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true" \
             --spring.datasource.dynamic.datasource.master.username=root --spring.datasource.dynamic.datasource.master.password="$MYSQL_ROOT_PASSWORD" \
             --spring.datasource.dynamic.datasource.slave.username=root --spring.datasource.dynamic.datasource.slave.password="$MYSQL_ROOT_PASSWORD" \
-            --spring.data.redis.host=127.0.0.1 --spring.data.redis.port=6379 \
+            --spring.data.redis.host=127.0.0.1 --spring.data.redis.port=6379 --spring.data.redis.password=ci-redis-pass \
             > /tmp/backend.log 2>&1 &
           code=000
           for i in $(seq 1 72); do
