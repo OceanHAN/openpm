@@ -6,16 +6,27 @@
 
 Product · Project · Execution · Story · Task · Bug · Test · Doc · Effort · Kanban · Metric · BI · Report
 
-[![CI](https://github.com/OceanHAN/openpm/actions/workflows/ci.yml/badge.svg)](https://github.com/OceanHAN/openpm/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Java](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![Vue](https://img.shields.io/badge/Vue-3-42b883.svg)](https://vuejs.org/)
-[![Tests](https://img.shields.io/badge/API%20tests-43%20suites%20%2F%201704%20assertions-success.svg)](#testing--verification)
+[![CI](https://img.shields.io/github/actions/workflow/status/OceanHAN/openpm/ci.yml?branch=main&label=CI&logo=github)](https://github.com/OceanHAN/openpm/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/OceanHAN/openpm?label=license&logo=gnu)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/OceanHAN/openpm?label=stars&logo=github)](https://github.com/OceanHAN/openpm/stargazers)
+[![Last commit](https://img.shields.io/github/last-commit/OceanHAN/openpm?label=last%20commit)](https://github.com/OceanHAN/openpm/commits/main)
+[![Issues](https://img.shields.io/github/issues/OceanHAN/openpm?label=issues)](https://github.com/OceanHAN/openpm/issues)
+[![Code size](https://img.shields.io/github/languages/code-size/OceanHAN/openpm)](https://github.com/OceanHAN/openpm)
+
+[![Java](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-brightgreen?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Tests](https://img.shields.io/badge/tests-43%20suites%20%2F%201704%20assertions-success)](#testing--verification)
+[![Modules](https://img.shields.io/badge/modules-48%2F99-blueviolet)](docs/MIGRATION-INVENTORY.md)
 
 <sub><a href="README.md">中文</a> · <a href="README.en.md">English</a></sub>
 
 </div>
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d   # MySQL + Redis
+```
 
 ---
 
