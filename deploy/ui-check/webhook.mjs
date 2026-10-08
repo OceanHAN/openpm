@@ -67,11 +67,18 @@ const dbExec = (sql) => {
       '--default-character-set=utf8mb4', '-N', '-e', sql], { encoding: 'utf8' })
   }
   // SQL 一律 base64 过去解，绕开远端 shell 对反引号 / $ / 引号的展开（deploy/_mysql.sh 同款做法）
+  // 登录用户默认 ubuntu（119 上装的是 ubuntu 的公钥）；有 REMOTE_SSH_PASS 才用 sshpass。
+  // 口令在**远端**从 /data/yudao/server/.secrets 读，避免出现在本机命令行里。
   const b64 = Buffer.from(sql, 'utf8').toString('base64')
-  return execFileSync('sshpass', ['-p', process.env.REMOTE_SSH_PASS || process.env.SSH_PASS || '', 'ssh',
-    '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=15', `root@${API_HOST}`,
-    `echo ${b64} | base64 -d | docker exec -i yudao-mysql mysql -uroot -p'$MYSQL_PASS' --default-character-set=utf8mb4 -N`],
-  { encoding: 'utf8' })
+  const user = process.env.REMOTE_SSH_USER || 'ubuntu'
+  const pass = process.env.REMOTE_SSH_PASS || process.env.SSH_PASS || ''
+  const remoteCmd = "PW=$(sed -n 's/^DB_PASSWORD=//p' /data/yudao/server/.secrets 2>/dev/null); " +
+    '[ -z "$PW" ] && PW="$MYSQL_PASS"; ' +
+    `echo ${b64} | base64 -d | docker exec -i yudao-mysql mysql -uroot -p"$PW" --default-character-set=utf8mb4 -N`
+  const sshArgs = ['-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=15', `${user}@${API_HOST}`, remoteCmd]
+  return pass
+    ? execFileSync('sshpass', ['-p', pass, 'ssh', ...sshArgs], { encoding: 'utf8' })
+    : execFileSync('ssh', sshArgs, { encoding: 'utf8' })
 }
 /**
  * 确保演示动作行在位（幂等 INSERT IGNORE，不删任何东西）。
