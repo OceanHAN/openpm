@@ -106,6 +106,9 @@
 git clone https://github.com/OceanHAN/openpm.git && cd openpm
 cp deploy/.env.example deploy/.env          # 填 MYSQL_PASS / REDIS_PASS
 cd deploy && docker compose up -d && cd ..
+
+> MySQL 容器用 **MySQL 8 默认 sql_mode**（含 `ONLY_FULL_GROUP_BY`），与 CI 保持一致；
+> 已有部署想对齐见 [deploy/README.md](deploy/README.md#sql_mode-必须与-ci-一致2026-09-30-起)。
 ```
 
 ### 2. 建库（导入禅道表结构与应用数据）

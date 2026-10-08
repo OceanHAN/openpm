@@ -311,3 +311,19 @@ bash deploy/audit-module-feasibility.sh > docs/audit-output.txt   # 复现 docs/
   只能清成 `""`，三个时间列才置 `null`（坑位 #35）。
 - **手测数组参数（日期区间）要写 `%5B0%5D`**：curl 直接写 `date[0]=` 会被 Tomcat 在进入 Spring
   之前拒掉（400 HTML），并且要加 `-g` 关掉 curl 自己的通配（坑位 #36）。
+
+## sql_mode 必须与 CI 一致（2026-09-30 起）
+
+MySQL 容器**刻意不设 `--sql-mode`**，即使用 MySQL 8 默认值（含 `ONLY_FULL_GROUP_BY`）——
+与 CI 里的 `mysql:8.0` service container 完全一致。
+
+历史教训：旧容器带着 `--sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION`（少了 `ONLY_FULL_GROUP_BY`），
+`SELECT DISTINCT ... ORDER BY <不在 SELECT 列表里的列>` 这种写法本地一直能过，CI 直接
+`ERROR 3065 ... incompatible with DISTINCT`。「本地绿、CI 红」排查成本很高，所以两边拉齐。
+
+已有部署想对齐（数据在 bind mount，重建容器不影响数据）：
+
+```bash
+bash deploy/align-mysql-sqlmode.sh          # dry-run：只看现状与将要做什么
+bash deploy/align-mysql-sqlmode.sh --yes    # 执行：改 compose → 重建 mysql → 校验 → 重启后端
+```

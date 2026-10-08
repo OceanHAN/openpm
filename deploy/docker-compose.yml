@@ -29,7 +29,8 @@ services:
       - --lower_case_table_names=1
       - --default-time-zone=+08:00
       - --max_allowed_packet=1G
-      - --sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+      # 刻意不设 --sql-mode：用 MySQL 8 默认值（含 ONLY_FULL_GROUP_BY），与 CI 的 service container 一致。
+      # 旧的宽松模式（STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION）会把 ERROR 3065 这类问题藏到 CI 才暴露。
     environment:
       MYSQL_ROOT_PASSWORD: "${MYSQL_PASS:?请在 deploy/.env 或环境变量里设置 MYSQL_PASS}"
       MYSQL_DATABASE: "ruoyi-vue-pro"
@@ -66,7 +67,7 @@ services:
     volumes:
       - ./data/redis:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a "$$REDIS_PASS" ping | grep -q PONG"]
+      test: ["CMD-SHELL", 'redis-cli -a "$$REDIS_PASS" ping | grep -q PONG']
       interval: 10s
       timeout: 5s
       retries: 10
