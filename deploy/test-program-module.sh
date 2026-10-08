@@ -58,8 +58,18 @@ print(d['name'], d['path'], d['grade'], d['status'], d['childCount'], d['project
 
 R=$(curl -s "${H[@]}" "$BASE/zentao/program/list-by-parent?parent=0")
 line=$(echo "$R" | python3 -c "import sys,json;print(' '.join(str(x['id']) for x in json.load(sys.stdin)['data']))")
-[ "${line}" = "9001" ] && { PASS=$((PASS+1)); echo "  ✅ 顶级项目集只有 9001（9002 挂在它下面）"; } \
-  || { FAIL=$((FAIL+1)); echo "  ❌ 顶级项目集 实际=${line}"; }
+# 只断言「9001 在顶级、9002 不在顶级」——真实库上用户可能自己也建了顶级项目集，别写成「只有 9001」
+case " ${line} " in
+  *" 9001 "*) HAS9001=1 ;;
+  *) HAS9001=0 ;;
+esac
+case " ${line} " in
+  *" 9002 "*) HAS9002=1 ;;
+  *) HAS9002=0 ;;
+esac
+[ "$HAS9001" = "1" ] && [ "$HAS9002" = "0" ] \
+  && { PASS=$((PASS+1)); echo "  ✅ 顶级项目集含 9001、不含 9002（9002 挂在它下面）"; } \
+  || { FAIL=$((FAIL+1)); echo "  ❌ 顶级项目集 实际=${line}（期望含 9001 不含 9002）"; }
 
 line=$(shape program 9002)
 [ "${line}" = ",9001,9002, 2 9001" ] && { PASS=$((PASS+1)); echo "  ✅ 子项目集 9002：path/grade/parent = ${line}"; } \
@@ -99,9 +109,11 @@ R=$(curl -s "${H[@]}" "$BASE/zentao/program/page?pageNo=1&pageSize=50&status=doi
 line=$(echo "$R" | python3 -c "
 import sys,json
 d=json.load(sys.stdin)['data']
-print(d['total'], all(x['status']=='doing' for x in d['list']))")
-[ "${line}" = "1 True" ] && { PASS=$((PASS+1)); echo "  ✅ 按状态过滤项目集 = ${line}"; } \
-  || { FAIL=$((FAIL+1)); echo "  ❌ 状态过滤 实际=${line}"; }
+ids=[x['id'] for x in d['list']]
+print(d['total'], all(x['status']=='doing' for x in d['list']), 9001 in ids)")
+[ "${line%% *}" -ge 1 ] 2>/dev/null && [ "${line#* }" = "True True" ] \
+  && { PASS=$((PASS+1)); echo "  ✅ 按状态过滤项目集（全部 doing 且含 9001）= ${line}"; } \
+  || { FAIL=$((FAIL+1)); echo "  ❌ 状态过滤 实际=${line}（期望 total>=1、全 doing、含 9001）"; }
 
 # 拿错 id：项目/执行 id 查项目集、项目集 id 查项目
 R=$(curl -s "${H[@]}" "$BASE/zentao/program/get?id=1")
