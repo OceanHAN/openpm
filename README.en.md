@@ -7,6 +7,7 @@
 Product · Project · Execution · Story · Task · Bug · Test · Doc · Effort · Kanban · Metric · BI · Report
 
 [![CI](https://img.shields.io/github/actions/workflow/status/OceanHAN/openpm/ci.yml?branch=main&label=CI&logo=github)](https://github.com/OceanHAN/openpm/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/OceanHAN/openpm?label=release&logo=github)](https://github.com/OceanHAN/openpm/releases)
 [![License](https://img.shields.io/github/license/OceanHAN/openpm?label=license&logo=gnu)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/OceanHAN/openpm?label=stars&logo=github)](https://github.com/OceanHAN/openpm/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/OceanHAN/openpm?label=last%20commit)](https://github.com/OceanHAN/openpm/commits/main)
@@ -156,6 +157,20 @@ pnpm dev
 ```
 
 Open <http://localhost:8081> and sign in with `admin / admin123`.
+
+### Option 2: run the published images (UI + server + MySQL + Redis)
+
+Images are built by GitHub Actions and pushed to GHCR ([docker.yml](.github/workflows/docker.yml)):
+
+```bash
+cd deploy
+cp .env.example .env                 # set MYSQL_PASS / REDIS_PASS
+docker compose -f docker-compose.app.yml up -d
+# seed the database the first time (idempotent SQL, see deploy/README.md)
+docker exec -i openpm-mysql mysql -uroot -p"$MYSQL_PASS" --default-character-set=utf8mb4 ruoyi-vue-pro < sql/01-ruoyi-vue-pro.sql
+```
+
+UI on <http://localhost:8081> (nginx + `/admin-api` reverse proxy), API on <http://localhost:48080>.
 
 > ⚠️ `admin123` is a demo default. Change it before exposing the service, and keep 3307/6380
 > behind a firewall.

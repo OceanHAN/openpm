@@ -7,6 +7,25 @@
 
 ## [未发布]
 
+## [v0.1.0] - 2026-10-08
+
+首个公开版本（tag `v0.1.0`）。
+
+### 新增
+
+- Docker 镜像：`Dockerfile` 多目标（`backend` = 后端 jar，`frontend` = nginx + 构建后的静态资源），
+  由 [.github/workflows/docker.yml](.github/workflows/docker.yml) 构建并推送到 GHCR；
+  `deploy/docker-compose.app.yml` 可一键起前后端 + MySQL + Redis
+- README 增加「用镜像一键起」与 release 徽章
+
+### 修复
+
+- 补上上游 `yudao-ui-admin-vue3` checkout 里缺失的 `src/views/oa/utils/constants.ts`
+  （3 个考勤组件 import 它），前端**生产构建 `vite build` 从报错变为可用**（28.8s 构建成功）
+- `deploy/ui-check/webhook.mjs` 的远端 SQL 通道不再写死 `sshpass root@`，改为公钥 + 远端读口令
+- `test-program-module.sh` 两处断言不再假设「库里只有演示数据」
+
+
 ### 新增
 
 - 完整实现禅道主干链：产品 / 产品计划 / 项目集 / 项目 / 执行（迭代与阶段）/ 需求（分层 + 版本链）/ 任务（含多人任务）/ 缺陷 / 构建 / 发布

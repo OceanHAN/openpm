@@ -1,0 +1,87 @@
+# ---------------------------------------------------------------------------
+# 用构建好的镜像一键起（前后端 + MySQL + Redis）
+#
+#   cd deploy
+#   cp .env.example .env            # 填 MYSQL_PASS / REDIS_PASS
+#   docker compose -f docker-compose.app.yml up -d
+#   # 首次需要建库（01~56 幂等脚本）：
+#   docker exec -i openpm-mysql mysql -uroot -p"$MYSQL_PASS" --default-character-set=utf8mb4 ruoyi-vue-pro < sql/01-ruoyi-vue-pro.sql
+#   for f in sql/0[2-9]-*.sql sql/[1-5][0-9]-*.sql; do docker exec -i openpm-mysql mysql -uroot -p"$MYSQL_PASS" --default-character-set=utf8mb4 ruoyi-vue-pro < "$f"; done
+#
+# 前端：http://localhost:8081  后端：http://localhost:48080
+# 镜像来自 GitHub Actions（.github/workflows/docker.yml，打 tag 或推 main 时构建）。
+# 想用本地构建的镜像：IMAGE_PREFIX=openpm:dev docker compose -f docker-compose.app.yml up -d
+# ---------------------------------------------------------------------------
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: openpm-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --lower_case_table_names=1
+      - --default-time-zone=+08:00
+      - --max_allowed_packet=1G
+      # 不设 --sql-mode：用 MySQL 8 默认值（含 ONLY_FULL_GROUP_BY），与 CI 一致
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_PASS:?请在 deploy/.env 或环境变量里设置 MYSQL_PASS}"
+      MYSQL_DATABASE: "ruoyi-vue-pro"
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - ./data/app-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    container_name: openpm-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASS:?请在 deploy/.env 或环境变量里设置 REDIS_PASS}", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - ./data/app-redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", 'redis-cli -a "$$REDIS_PASS" ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    image: "${IMAGE_PREFIX:-ghcr.io/oceanhan}/openpm-server:${IMAGE_TAG:-latest}"
+    container_name: openpm-server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: ruoyi-vue-pro
+      DB_USER: root
+      DB_PASSWORD: "${MYSQL_PASS:?}"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: "${REDIS_PASS:?}"
+      TZ: Asia/Shanghai
+    ports:
+      - "48080:48080"
+
+  ui:
+    image: "${IMAGE_PREFIX:-ghcr.io/oceanhan}/openpm-ui:${IMAGE_TAG:-latest}"
+    container_name: openpm-ui
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "8081:80"

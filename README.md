@@ -7,6 +7,7 @@
 产品 · 项目 · 执行 · 需求 · 任务 · 缺陷 · 测试 · 文档 · 工时 · 看板 · 度量 · BI · 报表
 
 [![CI](https://img.shields.io/github/actions/workflow/status/OceanHAN/openpm/ci.yml?branch=main&label=CI&logo=github)](https://github.com/OceanHAN/openpm/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/OceanHAN/openpm?label=release&logo=github)](https://github.com/OceanHAN/openpm/releases)
 [![License](https://img.shields.io/github/license/OceanHAN/openpm?label=license&logo=gnu)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/OceanHAN/openpm?label=stars&logo=github)](https://github.com/OceanHAN/openpm/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/OceanHAN/openpm?label=last%20commit)](https://github.com/OceanHAN/openpm/commits/main)
@@ -153,6 +154,21 @@ pnpm dev
 ```
 
 浏览器打开 <http://localhost:8081>，默认账号 `admin / admin123`。
+
+### 方式二：用镜像一键起（前后端 + MySQL + Redis）
+
+镜像由 GitHub Actions 构建并推到 GHCR（[docker.yml](.github/workflows/docker.yml)）：
+
+```bash
+cd deploy
+cp .env.example .env                 # 填 MYSQL_PASS / REDIS_PASS
+docker compose -f docker-compose.app.yml up -d
+# 首次建库（01~56 幂等脚本，详见 deploy/README.md）
+docker exec -i openpm-mysql mysql -uroot -p"$MYSQL_PASS" --default-character-set=utf8mb4 ruoyi-vue-pro < sql/01-ruoyi-vue-pro.sql
+for f in sql/0[2-9]-*.sql sql/[1-5][0-9]-*.sql; do docker exec -i openpm-mysql mysql -uroot -p"$MYSQL_PASS" --default-character-set=utf8mb4 ruoyi-vue-pro < "$f"; done
+```
+
+前端 <http://localhost:8081>（nginx 静态 + 反代 `/admin-api` 到后端），后端 <http://localhost:48080>。
 
 > ⚠️ `admin123` 只是演示默认值，任何对外暴露的部署都必须先改掉它，并把 3307/6380 收到防火墙后面。
 

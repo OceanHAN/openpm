@@ -1,0 +1,16 @@
+.git
+.github
+node_modules
+**/node_modules
+**/target
+deploy/local-stack/data
+deploy/data
+**/logs
+*.log
+docs/images
+dist
+**/dist
+.env.local
+deploy/.env
+deploy/_secrets.sh
+**/.DS_Store
